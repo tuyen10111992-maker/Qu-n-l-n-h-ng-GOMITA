@@ -62,7 +62,7 @@ function hashObj(o) {
 }
 
 function updateSyncState() {
-  if(!window.db) return;
+  if (typeof db === 'undefined') return;
   if(db.orders) db.orders.forEach(o => lastSyncState.orders[o.id] = hashObj(o));
   if(db.users) db.users.forEach(u => lastSyncState.users[u.id] = hashObj(u));
   if(db.staff) lastSyncState.staff = hashObj(db.staff);
@@ -70,7 +70,7 @@ function updateSyncState() {
 
 let syncTimeout = null;
 function syncChangesToSupabase() {
-  if(!sp || !window.db) return;
+  if(!sp || typeof db === 'undefined') return;
   clearTimeout(syncTimeout);
   syncTimeout = setTimeout(async () => {
     let changed = false;
@@ -120,7 +120,7 @@ function syncChangesToSupabase() {
 }
 
 async function syncFromSupabase() {
-  if (!sp || !window.db) return;
+  if (!sp || typeof db === 'undefined') return;
   setSyncStatus('saving', 'Đang tải dữ liệu...');
   try {
     const [ordersRes, usersRes, staffRes] = await Promise.all([
