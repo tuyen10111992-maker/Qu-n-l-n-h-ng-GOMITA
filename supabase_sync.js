@@ -22,11 +22,15 @@ function sanitizeOrder(o) {
   const allowedColumns = [
     'id', 'code', 'customer', 'address', 'phone', 'content', 'stage', 'owner', 
     'priority', 'due', 'next', 'note', 'zalo', 'estimate', 'quote', 'locked', 
-    'source', 'extras', 'payments', 'costs', 'labor', 'logs'
+    'source', 'extras', 'payments', 'costs', 'labor', 'logs', 'deletedAt'
   ];
   let clean = {};
   allowedColumns.forEach(col => {
-    if (o[col] !== undefined) clean[col] = o[col];
+    if (o[col] !== undefined) {
+      clean[col] = o[col];
+    } else if (col === 'deletedAt') {
+      clean.deletedAt = null;
+    }
   });
   
   // Đồng bộ bảng phụ kiện thông qua cột accessoriesList (kiểu text trong Supabase)
@@ -75,6 +79,20 @@ async function syncStaffToSupabase(staffList) {
   } catch (e) {
     console.error('Supabase staff upsert failed:', e);
     setSyncStatus('error', 'Lỗi lưu nhân sự');
+  }
+}
+
+async function deleteOrderFromSupabase(id) {
+  if (!sp) return;
+  setSyncStatus('saving', 'Đang xóa trên Cloud...');
+  try {
+    let { error } = await sp.from('app_orders').delete().eq('id', id);
+    if (error) throw error;
+    setSyncStatus('done', 'Đã xóa đơn hàng');
+    setTimeout(()=> setSyncStatus('running', 'Đang chạy'), 2000);
+  } catch (e) {
+    console.error('Supabase order delete failed:', e);
+    setSyncStatus('error', 'Lỗi xóa đám mây');
   }
 }
 
@@ -246,6 +264,79 @@ async function syncFromSupabase() {
     console.error('Supabase pull failed:', e);
     setSyncStatus('error', 'Lỗi tải đám mây');
   }
+}
+
+function getDaysInTrash(o) {
+  if (!o.deletedAt) return 0;
+  return (Date.now() - new Date(o.deletedAt).getTime()) / (1000 * 60 * 60 * 24);
+}
+
+function restoreOrder(id) {
+  let o = db.orders.find(x => x.id === id);
+  if (!o) return;
+  delete o.deletedAt;
+  log(o, 'Khôi phục đơn hàng từ Thùng rác');
+  render();
+  toast('Đã khôi phục đơn hàng');
+}
+
+async function permanentDeleteOrder(id) {
+  let o = db.orders.find(x => x.id === id);
+  if (!o) return;
+  if (getDaysInTrash(o) < 7) {
+    return toast('Chưa đủ 7 ngày để xóa vĩnh viễn.');
+  }
+  if (!confirm(`Xóa vĩnh viễn đơn hàng ${o.code}? Thao tác này không thể khôi phục.`)) return;
+  db.orders = db.orders.filter(x => x.id !== id);
+  
+  // Remove from lastSyncState so it doesn't trigger upsert
+  delete lastSyncState.orders[id];
+  
+  // Save locally
+  rawSave();
+  render();
+  
+  // Delete from Supabase
+  await deleteOrderFromSupabase(id);
+}
+
+function renderTrash() {
+  let list = db.orders.filter(o => o.deletedAt);
+  let rows = list.map(o => {
+    let diff = getDaysInTrash(o);
+    let canDel = diff >= 7;
+    let left = Math.ceil(7 - diff);
+    return `<tr>
+      <td><b>${esc(o.code)}</b></td>
+      <td>${esc(o.customer)}</td>
+      <td>${esc(o.stage)}</td>
+      <td>${new Date(o.deletedAt).toLocaleDateString('vi-VN')}</td>
+      <td><span class="status-pill ${canDel ? 'active' : 'inactive'}">${canDel ? 'Đủ điều kiện' : 'Chờ ' + left + ' ngày'}</span></td>
+      <td>
+        <div class="row-actions">
+          <button data-restore-order="${o.id}">Khôi phục</button>
+          <button class="danger" data-perm-delete="${o.id}" ${canDel ? '' : 'disabled'}>Xóa vĩnh viễn</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+  
+  $('#trashContent').innerHTML = rows ? `<table class="data">
+    <thead>
+      <tr>
+        <th>Mã đơn</th>
+        <th>Khách hàng</th>
+        <th>Trạng thái</th>
+        <th>Ngày xóa</th>
+        <th>Trạng thái xóa</th>
+        <th>Thao tác</th>
+      </tr>
+    </thead>
+    <tbody>${rows}</tbody>
+  </table>` : '<div class="empty">Thùng rác trống.</div>';
+  
+  $$('[data-restore-order]').forEach(b => b.onclick = () => restoreOrder(b.dataset.restoreOrder));
+  $$('[data-perm-delete]').forEach(b => b.onclick = () => permanentDeleteOrder(b.dataset.permDelete));
 }
 
 // Hook vào hàm save() của ứng dụng
