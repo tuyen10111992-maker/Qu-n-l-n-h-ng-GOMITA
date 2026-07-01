@@ -133,23 +133,50 @@ async function syncFromSupabase() {
     if (usersRes.error) throw usersRes.error;
     if (staffRes.error) throw staffRes.error;
 
-    if (ordersRes.data && ordersRes.data.length > 0) {
-      db.orders = ordersRes.data;
-    }
-    if (usersRes.data && usersRes.data.length > 0) {
-      db.users = usersRes.data.map(u => {
-        if (u.created_at) {
-          u.createdAt = u.created_at;
-          delete u.created_at;
-        }
-        return u;
-      });
-    }
+    // Đối soát và gộp đơn hàng
+    let localOrders = db.orders || [];
+    let cloudOrders = ordersRes.data || [];
+    let cloudOrdersMap = new Map(cloudOrders.map(o => [o.id, o]));
+    
+    let mergedOrders = [...cloudOrders];
+    let toUploadOrders = [];
+    
+    localOrders.forEach(lo => {
+      if (!cloudOrdersMap.has(lo.id)) {
+        mergedOrders.push(lo);
+        toUploadOrders.push(lo);
+      }
+    });
+    db.orders = mergedOrders;
+
+    // Đối soát và gộp tài khoản
+    let localUsers = db.users || [];
+    let cloudUsers = (usersRes.data || []).map(u => {
+      if (u.created_at) {
+        u.createdAt = u.created_at;
+        delete u.created_at;
+      }
+      return u;
+    });
+    let cloudUsersMap = new Map(cloudUsers.map(u => [u.id, u]));
+    
+    let mergedUsers = [...cloudUsers];
+    let toUploadUsers = [];
+    
+    localUsers.forEach(lu => {
+      if (!cloudUsersMap.has(lu.id)) {
+        mergedUsers.push(lu);
+        toUploadUsers.push(lu);
+      }
+    });
+    db.users = mergedUsers;
+
+    // Đồng bộ nhân sự
     if (staffRes.data && staffRes.data.length > 0) {
       db.staff = staffRes.data;
     }
     
-    // Avoid pushing back just what we pulled
+    // Cập nhật trạng thái đồng bộ cục bộ để tránh bị trigger push ngược lại ngay lập tức
     updateSyncState();
     
     if (typeof rawSave === 'function') {
@@ -157,13 +184,27 @@ async function syncFromSupabase() {
     } else {
       localStorage.setItem('gomita-flow-v1', JSON.stringify(db));
     }
+
+    // Đẩy ngược các dữ liệu cục bộ chưa có trên Cloud lên Supabase
+    if (toUploadOrders.length > 0) {
+      console.log('Đang đẩy các đơn hàng nội bộ lên Supabase:', toUploadOrders);
+      for (let o of toUploadOrders) {
+        await syncOrderToSupabase(o);
+      }
+    }
+    if (toUploadUsers.length > 0) {
+      console.log('Đang đẩy các tài khoản nội bộ lên Supabase:', toUploadUsers);
+      for (let u of toUploadUsers) {
+        await syncUserToSupabase(u);
+      }
+    }
     
     if (typeof render === 'function') render();
     if (typeof renderBoard === 'function') renderBoard();
     if (typeof renderReports === 'function') renderReports();
     if (typeof renderAccounts === 'function') renderAccounts();
     
-    setSyncStatus('done', 'Đã tải mới nhất');
+    setSyncStatus('done', 'Đã đồng bộ');
     setTimeout(()=> setSyncStatus('running', 'Đang chạy'), 2000);
   } catch (e) {
     console.error('Supabase pull failed:', e);
