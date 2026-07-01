@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#102a43">
+  <title>Gomita Flow — Quản lý đơn nội thất</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="logged-out">
+  <div id="toast"></div>
+  <section id="loginScreen" class="login-screen">
+    <div class="login-visual">
+      <div class="login-brand"><div class="logo">G</div><div><b>Gomita Flow</b><small>Quản lý đơn nội thất</small></div></div>
+      <div class="visual-copy"><span class="eyebrow">VẬN HÀNH GỌN GÀNG</span><h1>Mỗi đơn hàng,<br>một hành trình rõ ràng.</h1><p>Theo dõi tiến độ, tài chính và nhân sự trên cùng một không gian làm việc.</p><div class="visual-pills"><span>✓ Tiến độ trực quan</span><span>✓ Tài chính tức thời</span><span>✓ Phân quyền rõ ràng</span></div></div>
+      <div class="visual-orb orb1"></div><div class="visual-orb orb2"></div>
+    </div>
+    <div class="login-pane"><form id="loginForm" class="login-card"><div class="mobile-login-brand"><div class="logo">G</div><b>Gomita Flow</b></div><span class="eyebrow">CHÀO MỪNG TRỞ LẠI</span><h2>Đăng nhập tài khoản</h2><p>Nhập thông tin được Admin cấp để tiếp tục.</p><label>Tên đăng nhập<div class="login-input"><span>♙</span><input name="username" autocomplete="username" placeholder="Nhập tên đăng nhập" required></div></label><label>Mật khẩu<div class="login-input"><span>⌑</span><input id="loginPassword" type="password" name="password" autocomplete="current-password" placeholder="Nhập mật khẩu" required><button type="button" id="togglePassword" aria-label="Hiện mật khẩu">◉</button></div></label><div id="loginError" class="login-error"></div><button class="primary login-button" type="submit">Đăng nhập →</button><small class="login-help">Liên hệ Admin nếu bạn quên mật khẩu.</small></form></div>
+  </section>
+  <header class="topbar">
+    <div class="brand"><div class="logo">G</div><div><b>Gomita Flow</b><small>Quản lý đơn nội thất</small></div></div>
+    <nav><button class="nav active" data-view="kanban">▦ Đơn hàng</button><button class="nav" data-view="reports">⌁ Theo dõi & báo cáo</button><button class="nav admin-nav" data-view="accounts">♙ Tài khoản</button><button class="nav admin-nav" data-view="trash">🗑 Thùng rác</button></nav>
+    <div class="user"><span id="roleBadge"></span><strong id="currentName" style="cursor:pointer;" title="Đổi thông tin & mật khẩu"></strong><span id="syncStatusBadge" class="status-pill" style="margin-right:8px; display:none;"></span><button id="syncOnlineBtn" title="Đồng bộ cơ sở dữ liệu Supabase Online" style="min-height:34px; padding:4px 9px;">↻ Đồng bộ Online</button><button id="profileButton" title="Đổi thông tin & mật khẩu">⚙</button><button id="logoutButton" title="Đăng xuất">↪</button></div>
+  </header>
+  <main>
+    <section id="kanbanView" class="view active">
+      <div class="pagehead"><div><h1>Kanban đơn hàng</h1><p id="summaryLine"></p></div><button class="primary" id="newOrder">＋ Tạo đơn mới</button></div>
+      <div class="toolbar"><label class="search">⌕ <input id="search" placeholder="Tên khách, địa chỉ, 3 số cuối..."></label><select id="statusFilter"><option value="">Tất cả trạng thái</option></select><select id="priorityFilter"><option value="">Mọi ưu tiên</option><option>Gấp</option><option>Bình thường</option><option>Chưa gấp</option></select></div>
+      <div id="alerts" class="alerts"></div>
+      <div id="board" class="board"></div>
+    </section>
+    <section id="reportsView" class="view">
+      <div class="pagehead"><div><h1>Theo dõi & báo cáo</h1><p>Toàn cảnh vận hành và tài chính cập nhật tức thì.</p></div><div class="actions"><button id="exportCsv">⇩ Xuất Excel (CSV)</button><button id="printReport" class="primary">⎙ In / PDF</button></div></div>
+      <div id="metrics" class="metrics"></div>
+      <div class="report-tabs"><button class="rTab active" data-report="orders">Tổng hợp</button><button class="rTab" data-report="debt">Công nợ</button><button class="rTab" data-report="profit">Lãi / lỗ</button><button class="rTab" data-report="staff">Hiệu suất nhân sự</button></div>
+      <div id="reportContent" class="panel"></div>
+    </section>
+    <section id="accountsView" class="view">
+      <div class="pagehead"><div><h1>Quản lý tài khoản</h1><p>Tạo người dùng và phân quyền truy cập phần mềm.</p></div><button class="primary" id="newAccount">＋ Tạo tài khoản</button></div>
+      <div class="account-stats" id="accountStats"></div>
+      <div class="panel" id="accountsContent"></div>
+      <div class="panel" style="margin-top:18px;">
+        <h3>Sao lưu dữ liệu Google Drive</h3>
+        <p style="font-size:12px; color:var(--muted); margin-top:4px;">Cấu hình Google Apps Script Web App để tự động sao lưu dữ liệu hàng tuần và khôi phục khi cần thiết. Hệ thống sẽ tự động dọn dẹp các bản sao lưu cũ quá 30 ngày.</p>
+        <div class="grid" style="margin-top:12px; grid-template-columns: 2fr 1fr; align-items: flex-end;">
+          <div class="field"><label>URL Web App Google Apps Script</label><input type="url" id="backupUrl" placeholder="https://script.google.com/macros/s/.../exec"></div>
+          <div class="field"><button id="saveBackupUrlBtn" class="primary">Lưu cấu hình</button></div>
+        </div>
+        <div style="margin-top:14px; display:flex; gap:8px;">
+          <button id="backupNowBtn">☁ Sao lưu ngay</button>
+          <button id="restoreBtn">↻ Tải danh sách bản sao lưu</button>
+        </div>
+        <div id="backupList" style="margin-top:14px; max-height:220px; overflow:auto; border:1px solid var(--line); border-radius:10px; padding:10px; display:none;"></div>
+      </div>
+    </section>
+    <section id="trashView" class="view">
+      <div class="pagehead"><div><h1>Thùng rác đơn hàng</h1><p>Các đơn hàng đã xóa sẽ được lưu ở đây. Sau 7 ngày Admin có thể xóa vĩnh viễn.</p></div></div>
+      <div class="panel" id="trashContent"></div>
+    </section>
+  </main>
+
+  <dialog id="orderDialog"><form method="dialog" id="orderForm"><div class="modalhead"><div><small>HỒ SƠ ĐƠN HÀNG</small><h2 id="modalTitle">Tạo đơn mới</h2></div><button value="cancel" class="icon" formnovalidate>×</button></div><div id="orderFormBody"></div></form></dialog>
+  <dialog id="quickDialog"><form method="dialog" id="quickForm"><div class="modalhead"><h2 id="quickTitle"></h2><button value="cancel" class="icon" formnovalidate>×</button></div><div id="quickBody"></div></form></dialog>
+  <dialog id="accountDialog"><form method="dialog" id="accountForm"><div class="modalhead"><div><small>TÀI KHOẢN NGƯỜI DÙNG</small><h2 id="accountTitle">Tạo tài khoản</h2></div><button value="cancel" class="icon" formnovalidate>×</button></div><div id="accountBody"></div></form></dialog>
+    <script src="config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="app.js"></script>
+</body>
+</html>
