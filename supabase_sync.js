@@ -17,10 +17,33 @@ function setSyncStatus(status, text) {
   }
 }
 
+// Hàm lọc các trường hợp lệ trước khi gửi lên Supabase
+function sanitizeOrder(o) {
+  const allowedColumns = [
+    'id', 'code', 'customer', 'address', 'phone', 'content', 'stage', 'owner', 
+    'priority', 'due', 'next', 'note', 'zalo', 'estimate', 'quote', 'locked', 
+    'source', 'extras', 'payments', 'costs', 'labor', 'logs'
+  ];
+  let clean = {};
+  allowedColumns.forEach(col => {
+    if (o[col] !== undefined) clean[col] = o[col];
+  });
+  
+  // Đồng bộ bảng phụ kiện thông qua cột accessoriesList (kiểu text trong Supabase)
+  if (o.accessories) {
+    clean.accessoriesList = JSON.stringify(o.accessories);
+  } else {
+    clean.accessoriesList = '[]';
+  }
+  
+  return clean;
+}
+
 async function syncOrderToSupabase(o) {
   if (!sp) return;
   try {
-    let { error } = await sp.from('app_orders').upsert(o);
+    let cleanOrder = sanitizeOrder(o);
+    let { error } = await sp.from('app_orders').upsert(cleanOrder);
     if (error) throw error;
   } catch (e) {
     console.error('Supabase order upsert failed:', e);
@@ -116,7 +139,7 @@ function syncChangesToSupabase() {
       setSyncStatus('done', 'Đã lưu đám mây');
       setTimeout(()=> setSyncStatus('running', 'Đang chạy'), 2000);
     }
-  }, 1000); // Debounce
+  }, 300); // Rút ngắn thời gian delay để tránh bị reload ngắt quãng
 }
 
 async function syncFromSupabase() {
@@ -135,7 +158,20 @@ async function syncFromSupabase() {
 
     // Đối soát và gộp đơn hàng
     let localOrders = db.orders || [];
-    let cloudOrders = ordersRes.data || [];
+    let cloudOrders = (ordersRes.data || []).map(o => {
+      // Phục hồi lại danh sách phụ kiện từ accessoriesList
+      if (o.accessoriesList) {
+        try {
+          o.accessories = JSON.parse(o.accessoriesList);
+        } catch (e) {
+          o.accessories = [];
+        }
+        delete o.accessoriesList;
+      } else {
+        o.accessories = o.accessories || [];
+      }
+      return o;
+    });
     let cloudOrdersMap = new Map(cloudOrders.map(o => [o.id, o]));
     
     let mergedOrders = [...cloudOrders];
