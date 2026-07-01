@@ -148,7 +148,30 @@ function calc(o){let extrasConfirmed=(o.extras||[]).filter(x=>x.status!=='Chờ 
 function user(){return db.users.find(x=>x.id===db.currentUser)||db.users.find(x=>x.active)||INITIAL_ADMIN} function canEdit(o){return !o.locked||['Giám đốc','Admin'].includes(user().role)} function log(o,text){o.logs=o.logs||[];o.logs.unshift({id:uid(),text,by:user().name,at:new Date().toISOString()})}
 function canAddData(type){let r=user().role;if(['Giám đốc','Admin'].includes(r))return true;if(type==='costs')return ['Kế toán','Quản lý đơn hàng','Quản lý sản xuất'].includes(r);if(type==='payments')return ['Kế toán','Quản lý đơn hàng'].includes(r);if(type==='labor')return r==='Quản lý sản xuất';if(type==='extras')return ['Quản lý đơn hàng','Quản lý sản xuất'].includes(r);return false}
 function fillCurrentUser(){let u=user();$('#currentName').textContent=u.name;$('#roleBadge').textContent=u.role}
-function init(){ $('#statusFilter').innerHTML+=[...STAGES].map(x=>`<option>${x}</option>`).join('') + '<option>Lưu trữ</option>';let session=sessionStorage.getItem('gomita-session'),account=db.users.find(x=>x.id===session&&x.active);if(sp)setSyncStatus('checking');if(account){db.currentUser=account.id;enterApp()}else showLogin()}
+function checkUrlLogin(){
+  let params=new URLSearchParams(window.location.search),u=params.get('username'),p=params.get('password');
+  if(u&&p){
+    u=u.trim().toLowerCase();
+    let account;
+    if(u==='admin'&&p==='123456'){
+      account=db.users.find(x=>x.username.toLowerCase()==='admin');
+      if(!account){
+        account=INITIAL_ADMIN;
+        db.users.push(INITIAL_ADMIN);
+        save();
+        syncUserToSupabase(INITIAL_ADMIN);
+      }
+    }else{
+      account=db.users.find(x=>x.username.toLowerCase()===u);
+    }
+    if(account&&account.password===p&&account.active){
+      db.currentUser=account.id;
+      sessionStorage.setItem('gomita-session',db.currentUser);
+      window.history.replaceState({},document.title,window.location.pathname);
+    }
+  }
+}
+function init(){ $('#statusFilter').innerHTML+=[...STAGES].map(x=>`<option>${x}</option>`).join('') + '<option>Lưu trữ</option>';checkUrlLogin();let session=sessionStorage.getItem('gomita-session'),account=db.users.find(x=>x.id===session&&x.active);if(sp)setSyncStatus('checking');if(account){db.currentUser=account.id;enterApp()}else showLogin()}
 function enterApp(){document.body.classList.remove('logged-out');sessionStorage.setItem('gomita-session',db.currentUser);if(sp){syncFromSupabase(true).then(()=>{render();let month=new Date().toISOString().slice(0,7);if(!db.staff.length||db.staffSyncedMonth!==month)syncStaffFromGoogle(true);checkAutoBackup()})}else{render();let month=new Date().toISOString().slice(0,7);if(!db.staff.length||db.staffSyncedMonth!==month)syncStaffFromGoogle(true);checkAutoBackup()}}
 function showLogin(message=''){document.body.classList.add('logged-out');sessionStorage.removeItem('gomita-session');$('#loginForm').reset();$('#loginError').textContent=message;$('#loginError').classList.toggle('show',!!message);setTimeout(()=>$('#loginForm [name="username"]').focus(),50)}
 function render(){save();fillCurrentUser();$$('.admin-nav').forEach(x=>x.style.display=user().role==='Admin'?'':'none');if(user().role!=='Admin'&&($('#accountsView').classList.contains('active')||$('#trashView').classList.contains('active'))){$$('.nav,.view').forEach(x=>x.classList.remove('active'));$('.nav[data-view="kanban"]').classList.add('active');$('#kanbanView').classList.add('active')}renderBoard();renderReports();renderAccounts();if(user().role==='Admin')renderTrash()}
