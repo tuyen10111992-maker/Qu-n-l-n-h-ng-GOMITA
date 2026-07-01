@@ -1,0 +1,6 @@
+.accessory-table{min-width:720px}
+.accessory-table input{min-width:90px;width:100%;border:1px solid var(--line);border-radius:8px;padding:8px}
+.accessory-table .accessory-name{min-width:210px}
+.accessory-total{display:flex;justify-content:flex-end;gap:25px;margin-top:14px;padding:14px;border-radius:11px;background:#f5f8fc}
+.archive-actions{display:flex;justify-content:flex-end;margin-top:14px}
+.person-only-note{margin:0 0 12px;padding:10px 12px;border-radius:9px;background:#eef6ff;color:#355b86}

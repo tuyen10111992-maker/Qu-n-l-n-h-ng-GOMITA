@@ -18,6 +18,11 @@ Lần đầu hệ thống có một tài khoản quản trị: tên đăng nhậ
 - Nhật ký thao tác, dashboard, tổng hợp/công nợ/lãi lỗ/hiệu suất, xuất CSV mở bằng Excel và in PDF.
 - Quản lý tài khoản: tạo, sửa, khóa/mở và phân sáu vai trò; danh sách người phụ trách lấy trực tiếp từ tài khoản đang hoạt động.
 - Không tạo đơn giả. Màn hình bắt đầu trống để nhập đơn hàng thực tế.
+- Nguồn đơn hàng, thanh trạng thái lưu và chống thao tác lặp.
+- Khoản chi thống nhất: Chi đơn hàng/Chi phát sinh, người trả, công nợ và xác nhận Kế toán.
+- Nhật ký công tác dạng ma trận, sửa số công và phụ phí công tác; nhân công tách theo Ra file/Sản xuất/Lắp đặt.
+- Hoàn công chỉ chuyển về Lưu trữ khi hết công nợ và mọi khoản thu/chi đã được Kế toán xác nhận.
+- Sao lưu Google Drive tự động mỗi 7 ngày, sao lưu thủ công, xem lịch sử và phục hồi theo ngày.
 
 ## Kiến trúc triển khai nhiều người dùng
 
@@ -40,6 +45,7 @@ Lần đầu hệ thống có một tài khoản quản trị: tên đăng nhậ
 ## Luồng chuyển bước và Google Sheet
 
 - Quản lý đơn hàng chuyển tuần tự từ Tiếp nhận đến Ra file.
+- Riêng bước `Báo giá → Ra file` bắt buộc có Giá dự toán, Giá báo khách và nội dung Phụ kiện đi kèm.
 - Quản lý sản xuất chuyển từ Ra file qua Sản xuất, Lắp đặt đến Nghiệm thu. Khi vào Nghiệm thu phải chọn tài khoản Sale nhận lại đơn.
 - Kế toán xác nhận khoản thu, nhập chi phí và chuyển Nghiệm thu sang Hoàn công.
 - Mỗi lần chuyển bước, quản lý tích chọn một hoặc nhiều nhân sự và nhập số công từng người. Phần mềm tự tính tiền công, cộng chi phí nhân công, cập nhật lãi/lỗ và ghi nhật ký.
