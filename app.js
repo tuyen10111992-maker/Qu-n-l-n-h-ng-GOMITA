@@ -32,19 +32,7 @@ async function syncFromSupabase(silent=false){
     if(usersRes.error)throw usersRes.error;
     if(staffRes.error)throw staffRes.error;
     if(ordersRes.error)throw ordersRes.error;
-    let users = (usersRes.data || []).map(u => {
-      let data = {...u};
-      if(data.created_at){
-        data.createdAt = data.created_at;
-        delete data.created_at;
-      }
-      return data;
-    });
-    db.users = users.length ? users : [INITIAL_ADMIN];
-    if(!db.users.some(u=>u.username==='admin')){
-      db.users.push(INITIAL_ADMIN);
-      syncUserToSupabase(INITIAL_ADMIN);
-    }
+    db.users=usersRes.data.length?usersRes.data:[INITIAL_ADMIN];
     db.staff=staffRes.data||[];
     db.orders=ordersRes.data||[];
     localStorage.setItem('gomita-flow-v1',JSON.stringify(db));
@@ -73,12 +61,7 @@ async function syncUserToSupabase(u){
   if(!sp)return;
   setSyncStatus('saving');
   try{
-    let data={...u};
-    if(data.createdAt){
-      data.created_at=data.createdAt;
-      delete data.createdAt;
-    }
-    let {error}=await sp.from('app_users').upsert(data);
+    let {error}=await sp.from('app_users').upsert(u);
     if(error)throw error;
     setSyncStatus('synced');
   }catch(e){
@@ -148,30 +131,7 @@ function calc(o){let extrasConfirmed=(o.extras||[]).filter(x=>x.status!=='Chờ 
 function user(){return db.users.find(x=>x.id===db.currentUser)||db.users.find(x=>x.active)||INITIAL_ADMIN} function canEdit(o){return !o.locked||['Giám đốc','Admin'].includes(user().role)} function log(o,text){o.logs=o.logs||[];o.logs.unshift({id:uid(),text,by:user().name,at:new Date().toISOString()})}
 function canAddData(type){let r=user().role;if(['Giám đốc','Admin'].includes(r))return true;if(type==='costs')return ['Kế toán','Quản lý đơn hàng','Quản lý sản xuất'].includes(r);if(type==='payments')return ['Kế toán','Quản lý đơn hàng'].includes(r);if(type==='labor')return r==='Quản lý sản xuất';if(type==='extras')return ['Quản lý đơn hàng','Quản lý sản xuất'].includes(r);return false}
 function fillCurrentUser(){let u=user();$('#currentName').textContent=u.name;$('#roleBadge').textContent=u.role}
-function checkUrlLogin(){
-  let params=new URLSearchParams(window.location.search),u=params.get('username'),p=params.get('password');
-  if(u&&p){
-    u=u.trim().toLowerCase();
-    let account;
-    if(u==='admin'&&p==='123456'){
-      account=db.users.find(x=>x.username.toLowerCase()==='admin');
-      if(!account){
-        account=INITIAL_ADMIN;
-        db.users.push(INITIAL_ADMIN);
-        save();
-        syncUserToSupabase(INITIAL_ADMIN);
-      }
-    }else{
-      account=db.users.find(x=>x.username.toLowerCase()===u);
-    }
-    if(account&&account.password===p&&account.active){
-      db.currentUser=account.id;
-      sessionStorage.setItem('gomita-session',db.currentUser);
-      window.history.replaceState({},document.title,window.location.pathname);
-    }
-  }
-}
-function init(){ $('#statusFilter').innerHTML+=[...STAGES].map(x=>`<option>${x}</option>`).join('') + '<option>Lưu trữ</option>';checkUrlLogin();let session=db.currentUser||sessionStorage.getItem('gomita-session'),account=db.users.find(x=>x.id===session&&x.active);if(!account&&session==='u_admin'){account=db.users.find(x=>x.username==='admin')||INITIAL_ADMIN;if(!db.users.some(u=>u.username==='admin')){db.users.push(INITIAL_ADMIN);save()}}if(sp)setSyncStatus('checking');if(account){db.currentUser=account.id;enterApp()}else showLogin()}
+function init(){ $('#statusFilter').innerHTML+=[...STAGES].map(x=>`<option>${x}</option>`).join('') + '<option>Lưu trữ</option>';let session=sessionStorage.getItem('gomita-session'),account=db.users.find(x=>x.id===session&&x.active);if(sp)setSyncStatus('checking');if(account){db.currentUser=account.id;enterApp()}else showLogin()}
 function enterApp(){document.body.classList.remove('logged-out');sessionStorage.setItem('gomita-session',db.currentUser);if(sp){syncFromSupabase(true).then(()=>{render();let month=new Date().toISOString().slice(0,7);if(!db.staff.length||db.staffSyncedMonth!==month)syncStaffFromGoogle(true);checkAutoBackup()})}else{render();let month=new Date().toISOString().slice(0,7);if(!db.staff.length||db.staffSyncedMonth!==month)syncStaffFromGoogle(true);checkAutoBackup()}}
 function showLogin(message=''){document.body.classList.add('logged-out');sessionStorage.removeItem('gomita-session');$('#loginForm').reset();$('#loginError').textContent=message;$('#loginError').classList.toggle('show',!!message);setTimeout(()=>$('#loginForm [name="username"]').focus(),50)}
 function render(){save();fillCurrentUser();$$('.admin-nav').forEach(x=>x.style.display=user().role==='Admin'?'':'none');if(user().role!=='Admin'&&($('#accountsView').classList.contains('active')||$('#trashView').classList.contains('active'))){$$('.nav,.view').forEach(x=>x.classList.remove('active'));$('.nav[data-view="kanban"]').classList.add('active');$('#kanbanView').classList.add('active')}renderBoard();renderReports();renderAccounts();if(user().role==='Admin')renderTrash()}
@@ -217,9 +177,7 @@ function openAccount(id){let u=id?db.users.find(x=>x.id===id):{id:uid(),name:'',
 function toggleAccount(id){let u=db.users.find(x=>x.id===id);if(u.id===db.currentUser&&u.active)return toast('Không thể khóa tài khoản đang sử dụng.');if(u.role==='Admin'&&u.active&&db.users.filter(x=>x.active&&x.role==='Admin').length===1)return toast('Phải còn ít nhất một tài khoản Admin.');u.active=!u.active;render();toast(u.active?'Đã mở tài khoản':'Đã khóa tài khoản');syncUserToSupabase(u)}
 function exportCsv(){let rows=[['Mã đơn','Khách hàng','Địa chỉ','Điện thoại','Trạng thái','Phụ trách','Giá trị','Đã thu','Công nợ','Chi phí','Lãi lỗ','Ngày hẹn']];db.orders.filter(o=>!o.deletedAt).forEach(o=>{let c=calc(o);rows.push([o.code,o.customer,o.address,o.phone,o.stage,o.owner,c.revenue,c.confirmed,c.debt,c.costs,c.profit,o.due])});let csv='\ufeff'+rows.map(r=>r.map(v=>'"'+String(v).replaceAll('"','""')+'"').join(',')).join('\r\n'),a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));a.download='bao-cao-gomita-'+today()+'.csv';a.click();URL.revokeObjectURL(a.href)}
 function toast(s){let x=document.createElement('div');x.className='toast';x.textContent=s;$('#toast').append(x);setTimeout(()=>x.remove(),2600)}
-$$('.nav').forEach(b=>b.onclick=()=>{if(b.dataset.view==='accounts'&&user().role!=='Admin')return toast('Chỉ Admin được quản lý tài khoản.');if(b.dataset.view==='trash'&&user().role!=='Admin')return toast('Chỉ Admin được truy cập Thùng rác.');$$('.nav,.view').forEach(x=>x.classList.remove('active'));b.classList.add('active');$('#'+b.dataset.view+'View').classList.add('active')});$$('.rTab').forEach(b=>b.onclick=()=>{$$('.rTab').forEach(x=>x.classList.remove('active'));b.classList.add('active');renderReport(b.dataset.report)});$('#newOrder').onclick=()=>openOrder();$('#newAccount').onclick=()=>openAccount();['search','statusFilter','priorityFilter'].forEach(id=>$('#'+id).oninput=renderBoard);$('#exportCsv').onclick=exportCsv;$('#printReport').onclick=()=>window.print();$('#loginForm').onsubmit=e=>{e.preventDefault();let f=new FormData(e.currentTarget),username=f.get('username').trim().toLowerCase(),password=f.get('password');let account;if(username==='admin'&&password==='123456'){account=db.users.find(x=>x.username.toLowerCase()==='admin');if(!account){account=INITIAL_ADMIN;db.users.push(INITIAL_ADMIN);save();syncUserToSupabase(INITIAL_ADMIN)}}else{account=db.users.find(x=>x.username.toLowerCase()===username)}if(!account||account.password!==password)return showLogin('Tên đăng nhập hoặc mật khẩu không đúng.');if(!account.active)return showLogin('Tài khoản này đã bị khóa. Vui lòng liên hệ Admin.');db.currentUser=account.id;enterApp()};$('#logoutButton').onclick=()=>showLogin();$('#currentName').onclick=openProfile;$('#profileButton').onclick=openProfile;$('#togglePassword').onclick=()=>{let p=$('#loginPassword');p.type=p.type==='password'?'text':'password'};$('#syncOnlineBtn')?.addEventListener('click',()=>syncFromSupabase());
-init();
-
+$$('.nav').forEach(b=>b.onclick=()=>{if(b.dataset.view==='accounts'&&user().role!=='Admin')return toast('Chỉ Admin được quản lý tài khoản.');if(b.dataset.view==='trash'&&user().role!=='Admin')return toast('Chỉ Admin được truy cập Thùng rác.');$$('.nav,.view').forEach(x=>x.classList.remove('active'));b.classList.add('active');$('#'+b.dataset.view+'View').classList.add('active')});$$('.rTab').forEach(b=>b.onclick=()=>{$$('.rTab').forEach(x=>x.classList.remove('active'));b.classList.add('active');renderReport(b.dataset.report)});$('#newOrder').onclick=()=>openOrder();$('#newAccount').onclick=()=>openAccount();['search','statusFilter','priorityFilter'].forEach(id=>$('#'+id).oninput=renderBoard);$('#exportCsv').onclick=exportCsv;$('#printReport').onclick=()=>window.print();$('#loginForm').onsubmit=e=>{e.preventDefault();let f=new FormData(e.currentTarget),username=f.get('username').trim().toLowerCase(),account=db.users.find(x=>x.username.toLowerCase()===username);if(!account||account.password!==f.get('password'))return showLogin('Tên đăng nhập hoặc mật khẩu không đúng.');if(!account.active)return showLogin('Tài khoản này đã bị khóa. Vui lòng liên hệ Admin.');db.currentUser=account.id;enterApp()};$('#logoutButton').onclick=()=>showLogin();$('#currentName').onclick=openProfile;$('#profileButton').onclick=openProfile;$('#togglePassword').onclick=()=>{let p=$('#loginPassword');p.type=p.type==='password'?'text':'password'};init();
 
 function getDaysInTrash(o){if(!o.deletedAt)return 0;return(Date.now()-new Date(o.deletedAt).getTime())/(1000*60*60*24)}
 function restoreOrder(id){let o=db.orders.find(x=>x.id===id);if(!o)return;delete o.deletedAt;log(o,'Khôi phục đơn hàng từ thùng rác');render();toast('Đã khôi phục đơn hàng')}
@@ -234,5 +192,4 @@ function openProfile(){let u=user();$('#accountTitle').textContent='Đổi thôn
 
 function payItem(o,type,id){if(!['Kế toán','Giám đốc','Admin'].includes(user().role))return toast('Chỉ Kế toán được xác nhận thanh toán.');let list=o[type]||[],item=list.find(x=>x.id===id);if(item){item.status='Đã thanh toán';log(o,`Xác nhận thanh toán ${type==='extras'?'phát sinh':'chi phí'} "${item.text}" số tiền ${money(item.amount)}`);render();openOrder(o.id,type);toast('Đã xác nhận thanh toán thành công.');syncOrderToSupabase(o)}}
 function openEditLabor(o,id){let x=o.labor.find(item=>item.id===id);if(!x)return;if(!canAddData('labor'))return toast('Bạn không có quyền sửa công nhân sự.');$('#quickTitle').textContent='Sửa nhân sự / công';$('#quickBody').innerHTML=`<div class="formcontent"><div class="grid"><div class="field"><label>Nhân sự</label><input value="${esc(x.staff)}" disabled></div><div class="field"><label>Công đoạn</label><input value="${esc(x.stage)}" disabled></div><div class="field"><label>Số công *</label><input type="number" step="0.25" min="0" name="days" value="${x.days}"></div><div class="field"><label>Phụ phí công tác</label><input type="number" name="allowance" value="${x.allowance||0}" min="0"></div><div class="field"><label>Trạng thái</label><select name="status"><option value="Chưa chốt" ${x.status==='Chưa chốt'?'selected':''}>Chưa chốt</option><option value="Đã chốt" ${x.status==='Đã chốt'?'selected':''}>Đã chốt</option></select></div></div></div><div class="modalactions"><button value="cancel" formnovalidate>Hủy</button><button type="button" id="saveEditLaborBtn" class="primary">Lưu</button></div>`;$('#quickDialog').showModal();$('#saveEditLaborBtn').onclick=()=>{let f=new FormData($('#quickForm')),days=Number(f.get('days')),allowance=Number(f.get('allowance')||0),status=f.get('status');if(status==='Đã chốt'&&!days&&!allowance)return toast('Công hoặc phụ phí đã chốt phải lớn hơn 0.');x.days=days;x.allowance=allowance;x.status=status;log(o,`Cập nhật công thợ ${x.staff} bước ${x.stage} thành ${days} công + ${money(allowance)} phụ phí (${status})`);render();$('#quickDialog').close();openOrder(o.id,'labor');toast('Đã cập nhật công thợ.');syncOrderToSupabase(o)}}
-$$('.nav').forEach(b=>b.onclick=()=>{if(b.dataset.view==='accounts'&&user().role!=='Admin')return toast('Chỉ Admin được quản lý tài khoản.');if(b.dataset.view==='trash'&&user().role!=='Admin')return toast('Chỉ Admin được truy cập Thùng rác.');$$('.nav,.view').forEach(x=>x.classList.remove('active'));b.classList.add('active');$('#'+b.dataset.view+'View').classList.add('active')});$$('.rTab').forEach(b=>b.onclick=()=>{$$('.rTab').forEach(x=>x.classList.remove('active'));b.classList.add('active');renderReport(b.dataset.report)});$('#newOrder').onclick=()=>openOrder();$('#newAccount').onclick=()=>openAccount();['search','statusFilter','priorityFilter'].forEach(id=>$('#'+id).oninput=renderBoard);$('#exportCsv').onclick=exportCsv;$('#printReport').onclick=()=>window.print();$('#loginForm').onsubmit=e=>{e.preventDefault();let f=new FormData(e.currentTarget),username=f.get('username').trim().toLowerCase(),password=f.get('password');let account;if(username==='admin'&&password==='123456'){account=db.users.find(x=>x.username.toLowerCase()==='admin');if(!account){account=INITIAL_ADMIN;db.users.push(INITIAL_ADMIN);save();syncUserToSupabase(INITIAL_ADMIN)}}else{account=db.users.find(x=>x.username.toLowerCase()===username)}if(!account||account.password!==password)return showLogin('Tên đăng nhập hoặc mật khẩu không đúng.');if(!account.active)return showLogin('Tài khoản này đã bị khóa. Vui lòng liên hệ Admin.');db.currentUser=account.id;enterApp()};$('#logoutButton').onclick=()=>showLogin();$('#currentName').onclick=openProfile;$('#profileButton').onclick=openProfile;$('#togglePassword').onclick=()=>{let p=$('#loginPassword');p.type=p.type==='password'?'text':'password'};$('#syncOnlineBtn')?.addEventListener('click',()=>syncFromSupabase());
-init();
+
