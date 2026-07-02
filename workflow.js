@@ -82,5 +82,5 @@ function renderArchiveV2(){
 }
 const renderBoardV1=renderBoard;
 renderBoard=function(){renderBoardV1();$('#board [data-stage="Lưu trữ"]')?.remove();Array.from($('#statusFilter').options).find(x=>x.value==='Lưu trữ')?.remove();renderArchiveV2()};
-$$('.nav').forEach(b=>b.onclick=()=>{if(b.dataset.view==='accounts'&&user().role!=='Admin')return toast('Chỉ Admin được quản lý tài khoản.');$$('.nav,.view').forEach(x=>x.classList.remove('active'));b.classList.add('active');$('#'+b.dataset.view+'View').classList.add('active');if(b.dataset.view==='archive')renderArchiveV2()});
+$$('.nav').forEach(b=>b.onclick=()=>{if(b.dataset.view==='accounts'&&user().role!=='Admin')return toast('Chỉ Admin được quản lý tài khoản.');if(b.dataset.view==='trash'&&user().role!=='Admin')return toast('Chỉ Admin được truy cập Thùng rác.');$$('.nav,.view').forEach(x=>x.classList.remove('active'));b.classList.add('active');$('#'+b.dataset.view+'View').classList.add('active');if(b.dataset.view==='archive')renderArchiveV2();if(b.dataset.view==='trash')renderTrash()});
 if(db.currentUser&&user())render();
