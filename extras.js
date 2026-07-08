@@ -3,7 +3,7 @@
 (function () {
   const previousCanAddData = canAddData;
   canAddData = function (type) {
-    if (type === 'extras') return ['Quản lý đơn hàng', 'Giám đốc', 'Admin'].includes(user().role);
+    if (type === 'extras') return ['Quản lý đơn hàng', 'Quản lý sản xuất', 'Kế toán', 'Giám đốc', 'Admin'].includes(user().role);
     return previousCanAddData(type);
   };
 
