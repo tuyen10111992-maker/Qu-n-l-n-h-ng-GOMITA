@@ -102,6 +102,11 @@ openOrder=function(id,tab){
  tab=tab||'info';var order=id?db.orders.find(function(x){return x.id===id}):null;
  if(order&&!canSeeOrder(order)){toast('Bạn không có quyền xem đơn hàng này.');return}
  baseOpenOrderDocs(id,tab);
+ if(order&&order.stage==='Lưu trữ'&&!order.locked&&user().role==='Admin'){
+  var actions=$('#orderFormBody .modalactions');
+  if(actions&&!actions.querySelector('#relockOrder'))actions.insertAdjacentHTML('afterbegin','<button type="button" id="relockOrder">🔒 Khóa đơn lại</button>');
+  var relock=$('#relockOrder');if(relock)relock.onclick=function(){if(!confirm('Khóa lại đơn '+order.code+'? Sau khi khóa, đơn sẽ trở về chế độ chỉ đọc.'))return;order.locked=true;log(order,'Khóa lại đơn lưu trữ');render();openOrder(order.id,tab);toast('Đã khóa lại đơn hàng')};
+ }
  if(tab!=='info')return;
  var content=$('#orderFormBody .formcontent'),grid=content&&content.querySelector('.grid');if(!content||!grid)return;
  if(!grid.querySelector('[name="saleOwnerId"]'))grid.insertAdjacentHTML('beforeend',saleOwnerField(order));
