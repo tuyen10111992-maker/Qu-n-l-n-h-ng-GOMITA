@@ -1,4 +1,4 @@
-﻿// GOOGLE APPS SCRIPT - TÀI LIỆU ĐƠN HÀNG GOMITA
+// GOOGLE APPS SCRIPT - TÀI LIỆU ĐƠN HÀNG GOMITA
 // 1) Tạo một dự án mới tại https://script.google.com và dán toàn bộ file này.
 // 2) Project Settings > Script Properties: tạo GOMITA_DOCUMENT_TOKEN với một chuỗi bí mật dài.
 // 3) Deploy > New deployment > Web app.
@@ -78,15 +78,16 @@ function syncPermissions_(payload){
 }
 
 function uploadDocument_(payload){
- if(String(payload.mimeType||'')!=='application/pdf')throw new Error('Chỉ chấp nhận file PDF.');
+ var mime=String(payload.mimeType||''),allowed={'application/pdf':'.pdf','image/jpeg':'.jpg','image/png':'.png'};
+ if(!allowed[mime])throw new Error('Chỉ chấp nhận file PDF, JPG/JPEG hoặc PNG.');
  var encoded=String(payload.dataBase64||'');if(!encoded)throw new Error('Không có dữ liệu file.');
  if(encoded.length>28*1024*1024)throw new Error('File vượt quá giới hạn 20 MB.');
  var type=String(payload.documentType||'');if(['quote','contract','drawing'].indexOf(type)<0)throw new Error('Loại tài liệu không hợp lệ.');
  var folder=orderFolder_(payload),emails=syncFolderViewers_(folder,payload.allowedEmails||[]);
- var original=safeName_(payload.fileName,'tai-lieu.pdf');if(!/\.pdf$/i.test(original))original+='.pdf';
+ var original=safeName_(payload.fileName,'tai-lieu'+allowed[mime]);if(!/\.(pdf|jpe?g|png)$/i.test(original))original+=allowed[mime];
  var prefix={quote:'BAO_GIA',contract:'HOP_DONG',drawing:'BAN_VE'}[type];
  var name=prefix+' - '+original;
- var blob=Utilities.newBlob(Utilities.base64Decode(encoded),'application/pdf',name);
+ var blob=Utilities.newBlob(Utilities.base64Decode(encoded),mime,name);
  var file=folder.createFile(blob);
  file.setDescription('GOMITA_DOCUMENT_TYPE='+type);
  var files=folder.getFiles();

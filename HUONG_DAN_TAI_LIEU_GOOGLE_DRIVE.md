@@ -26,7 +26,7 @@
 2. Vào **Tài khoản > Tài liệu đơn hàng trên Google Drive**.
 3. Nhập URL `/exec` và đúng mã bí mật ở bước trên.
 4. Nhấn **Lưu cấu hình** rồi **Đồng bộ quyền Drive**.
-5. Mở một đơn hàng > **Thông tin** và thử tải một file PDF.
+5. Mở một đơn hàng > **Thông tin** và thử tải một file PDF, JPG hoặc PNG.
 
 Google Drive tự tạo thư mục `GOMITA_DON_HANG`, mỗi đơn có một thư mục con. Mỗi loại Báo giá, Hợp đồng, Bản vẽ chỉ giữ file mới nhất; file cũ được chuyển vào Thùng rác sau khi file mới tạo thành công.
 
