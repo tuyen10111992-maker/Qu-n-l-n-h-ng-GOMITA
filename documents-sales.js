@@ -45,10 +45,12 @@ var baseRenderArchiveDocs=typeof renderArchiveV2==='function'?renderArchiveV2:nu
 if(baseRenderArchiveDocs)renderArchiveV2=function(){return withVisibleOrders(function(){return baseRenderArchiveDocs()})};
 
 function applySaleNavigation(){
- var sale=isSale();
- ['archive','reports','accounts','trash'].forEach(function(v){var b=$('.nav[data-view="'+v+'"]');if(b)b.style.display=sale?'none':''});
+ var role=user().role,sale=role===SALE_ROLE,admin=role==='Admin';
+ var visible={kanban:true,archive:!sale,reports:!sale,accounts:admin,trash:admin};
+ Object.keys(visible).forEach(function(view){var button=$('.nav[data-view="'+view+'"]');if(button)button.style.display=visible[view]?'':'none'});
  var sync=$('#syncOnlineBtn');if(sync)sync.style.display=sale?'none':'';
- if(sale&&!$('#kanbanView').classList.contains('active')){$$('.nav,.view').forEach(function(x){x.classList.remove('active')});var b=$('.nav[data-view="kanban"]');if(b)b.classList.add('active');$('#kanbanView').classList.add('active')}
+ var active=$('.nav.active'),activeView=active&&active.dataset.view;
+ if(activeView&&!visible[activeView]){$$('.nav,.view').forEach(function(x){x.classList.remove('active')});var button=$('.nav[data-view="kanban"]');if(button)button.classList.add('active');$('#kanbanView').classList.add('active')}
 }
 var baseRenderDocs=render;
 render=function(){var result=baseRenderDocs();applySaleNavigation();return result};
