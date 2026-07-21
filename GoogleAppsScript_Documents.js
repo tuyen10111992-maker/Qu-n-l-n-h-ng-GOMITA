@@ -82,10 +82,10 @@ function uploadDocument_(payload){
  if(!allowed[mime])throw new Error('Chỉ chấp nhận file PDF, JPG/JPEG hoặc PNG.');
  var encoded=String(payload.dataBase64||'');if(!encoded)throw new Error('Không có dữ liệu file.');
  if(encoded.length>28*1024*1024)throw new Error('File vượt quá giới hạn 20 MB.');
- var type=String(payload.documentType||'');if(['quote','contract','drawing'].indexOf(type)<0)throw new Error('Loại tài liệu không hợp lệ.');
+ var type=String(payload.documentType||'');if(['quote','contract','drawing','extraDoc'].indexOf(type)<0)throw new Error('Loại tài liệu không hợp lệ.');
  var folder=orderFolder_(payload),emails=syncFolderViewers_(folder,payload.allowedEmails||[]);
  var original=safeName_(payload.fileName,'tai-lieu'+allowed[mime]);if(!/\.(pdf|jpe?g|png)$/i.test(original))original+=allowed[mime];
- var prefix={quote:'BAO_GIA',contract:'HOP_DONG',drawing:'BAN_VE'}[type];
+ var prefix={quote:'BAO_GIA',contract:'HOP_DONG',drawing:'BAN_VE',extraDoc:'PHAT_SINH'}[type];
  var name=prefix+' - '+original;
  var blob=Utilities.newBlob(Utilities.base64Decode(encoded),mime,name);
  var file=folder.createFile(blob);
