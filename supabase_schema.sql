@@ -6,6 +6,7 @@ create table if not exists app_users (
   id text primary key,
   name text not null,
   username text not null unique,
+  email text unique,
   password text not null,
   role text not null,
   phone text,
@@ -44,6 +45,7 @@ create table if not exists app_orders (
   content text,
   stage text not null,
   owner text,
+  "saleOwnerId" text,
   priority text,
   due text,
   next text,
@@ -58,6 +60,7 @@ create table if not exists app_orders (
   "accessoriesList" text,
   "deletedAt" text,
   source text,
+  documents jsonb default '{}'::jsonb,
   extras jsonb default '[]'::jsonb,
   payments jsonb default '[]'::jsonb,
   costs jsonb default '[]'::jsonb,
@@ -66,12 +69,22 @@ create table if not exists app_orders (
   "updatedAt" timestamptz default now()
 );
 
+
+-- 4. Cấu hình dùng chung cho tích hợp tài liệu
+create table if not exists app_settings (
+  id text primary key,
+  data jsonb not null default '{}'::jsonb,
+  updated_at timestamptz default now()
+);
+
 -- Kích hoạt chính sách Row Level Security (RLS) để cho phép Anon Key truy cập
 alter table app_users enable row level security;
 alter table app_staff enable row level security;
 alter table app_orders enable row level security;
+alter table app_settings enable row level security;
 
 -- Tạo các chính sách cho phép đọc/ghi từ ứng dụng client thông qua anon key
 create policy "Allow all operations for app_users" on app_users for all using (true) with check (true);
 create policy "Allow all operations for app_staff" on app_staff for all using (true) with check (true);
 create policy "Allow all operations for app_orders" on app_orders for all using (true) with check (true);
+create policy "Allow all operations for app_settings" on app_settings for all using (true) with check (true);

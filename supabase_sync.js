@@ -22,7 +22,7 @@ function sanitizeOrder(o) {
   const allowedColumns = [
     'id', 'code', 'customer', 'address', 'phone', 'content', 'stage', 'owner', 
     'priority', 'due', 'next', 'note', 'zalo', 'estimate', 'quote', 'locked', 
-    'source', 'extras', 'payments', 'costs', 'labor', 'logs', 'deletedAt'
+    'source', 'saleOwnerId', 'documents', 'extras', 'payments', 'costs', 'labor', 'logs', 'deletedAt'
   ];
   let clean = {};
   allowedColumns.forEach(col => {
