@@ -1,7 +1,7 @@
 // Quản lý tài liệu PDF và phạm vi dữ liệu của Sale.
 (function(){
 var SALE_ROLE='Sale';
-var DOC_TYPES={quote:'Báo giá',contract:'Hợp đồng',drawing:'Bản vẽ',extraDoc:'Tài liệu phát sinh'};
+var DOC_TYPES={quote:'Báo giá',contract:'Hợp đồng',drawing:'Bản vẽ',extraDoc:'Tài liệu phát sinh',estimateFile:'Dự toán'};
 var MANAGER_ROLES=['Quản lý đơn hàng','Quản lý sản xuất','Giám đốc','Phó giám đốc','Admin'];
 if(!ROLES.includes(SALE_ROLE))ROLES.splice(1,0,SALE_ROLE);
 db.settings=db.settings||{};
@@ -28,6 +28,7 @@ function canSeeOrder(o){return !isSale()||(o.saleOwnerId===user().id&&o.stage!==
 function sales(){return(db.users||[]).filter(function(u){return u.active&&u.role===SALE_ROLE})}
 function assignedSale(o){return(db.users||[]).find(function(u){return u.id===o.saleOwnerId&&u.active&&u.role===SALE_ROLE})}
 function canUpdateDocuments(o){if(isSale())return canSeeOrder(o);return MANAGER_ROLES.includes(user().role)}
+function canUpdateDocument(o,type){if(type==='estimateFile')return isSale()&&canSeeOrder(o);return canUpdateDocuments(o)}
 function emailsForOrder(o){var list=(db.users||[]).filter(function(u){return u.active&&u.email&&u.role!==SALE_ROLE}).map(function(u){return u.email});var sale=assignedSale(o);if(sale&&sale.email)list.push(sale.email);return Array.from(new Set(list.map(function(x){return x.toLowerCase()})))}
 function withVisibleOrders(fn){if(!isSale())return fn();var all=db.orders;db.orders=all.filter(canSeeOrder);try{return fn()}finally{db.orders=all}}
 
@@ -75,7 +76,7 @@ renderAccounts=function(){
  $('#accountStats').innerHTML='<div class="metric"><small>Tổng tài khoản</small><strong>'+db.users.length+'</strong></div><div class="metric"><small>Đang hoạt động</small><strong>'+active+'</strong></div><div class="metric"><small>Thiếu email</small><strong class="'+(missing?'danger':'')+'">'+missing+'</strong></div>';
  $('#accountsContent').innerHTML='<table class="data account-table"><thead><tr><th>Người dùng</th><th>Tên đăng nhập</th><th>Email Google</th><th>Vai trò</th><th>Điện thoại</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody>'+accountRows()+'</tbody></table>';
  var old=$('#documentDriveConfig');if(old)old.remove();
- $('#accountsContent').insertAdjacentHTML('afterend','<div id="documentDriveConfig" class="backup-box drive-config"><div class="pagehead"><div><h3>Tài liệu đơn hàng trên Google Drive</h3><p>PDF/JPG/PNG Báo giá, Hợp đồng và Bản vẽ · Chỉ chia sẻ cho email được phép</p></div></div><div class="grid"><div class="field span2"><label>URL Google Apps Script tài liệu</label><input id="documentUrl" value="'+esc(db.settings.documentUrl||'')+'" placeholder="https://script.google.com/macros/s/.../exec"></div><div class="field"><label>Mã xác thực tài liệu</label><input id="documentToken" type="password" value="'+esc(db.settings.documentToken||'')+'"></div></div><div class="backup-actions"><button id="saveDocumentConfig" class="primary">Lưu cấu hình</button><button id="syncDocumentPermissions">Đồng bộ quyền Drive</button></div></div>');
+ $('#accountsContent').insertAdjacentHTML('afterend','<div id="documentDriveConfig" class="backup-box drive-config"><div class="pagehead"><div><h3>Tài liệu đơn hàng trên Google Drive</h3><p>PDF/JPG/PNG Báo giá, Hợp đồng, Bản vẽ và tài liệu phát sinh; JSON Dự toán · Chỉ chia sẻ cho email được phép</p></div></div><div class="grid"><div class="field span2"><label>URL Google Apps Script tài liệu</label><input id="documentUrl" value="'+esc(db.settings.documentUrl||'')+'" placeholder="https://script.google.com/macros/s/.../exec"></div><div class="field"><label>Mã xác thực tài liệu</label><input id="documentToken" type="password" value="'+esc(db.settings.documentToken||'')+'"></div></div><div class="backup-actions"><button id="saveDocumentConfig" class="primary">Lưu cấu hình</button><button id="syncDocumentPermissions">Đồng bộ quyền Drive</button></div></div>');
  $$('[data-edit-user]').forEach(function(b){b.onclick=function(){openAccount(b.dataset.editUser)}});
  $$('[data-toggle-user]').forEach(function(b){b.onclick=function(){toggleAccount(b.dataset.toggleUser)}});
  $('#saveDocumentConfig').onclick=async function(){db.settings.documentUrl=$('#documentUrl').value.trim();db.settings.documentToken=$('#documentToken').value.trim();save();try{await saveDocumentSettingsCloud();toast('Đã lưu cấu hình tài liệu Google Drive')}catch(err){console.error(err);toast('Đã lưu trên máy nhưng chưa lưu được cấu hình lên Cloud.')}};
@@ -140,7 +141,7 @@ function documentHistoryHtml(doc){
  return'<details class="document-history"><summary>Lịch sử cập nhật ('+history.length+')</summary>'+history.map(function(x){return'<div class="document-history-item"><b>'+esc(x.action||'Cập nhật')+(x.version?' · Phiên bản '+x.version:'')+'</b> · '+esc(x.by||'')+(x.email?' · '+esc(x.email):'')+'<br>'+esc(x.oldName||'Chưa có file')+' → '+esc(x.newName||'')+'<br>'+new Date(x.at).toLocaleString('vi-VN')+'</div>'}).join('')+'</details>';
 }
 function renderDocumentSection(o){
- var cards=Object.keys(DOC_TYPES).map(function(type){var label=DOC_TYPES[type],doc=o.documents&&o.documents[type],canUpdate=canUpdateDocuments(o);return'<article class="document-card"><h4>▤ '+label+'</h4><div class="document-file">'+(doc?'<b title="'+esc(doc.name)+'">'+esc(doc.name)+'</b><small>Phiên bản '+Number(doc.version||1)+' · '+new Date(doc.updatedAt).toLocaleString('vi-VN')+'</small><small>'+esc(doc.updatedBy||'')+' · '+esc(doc.updatedEmail||'')+'</small>':'<b>Chưa có tài liệu</b><small>Nhận một file PDF, JPG hoặc PNG</small>')+'</div><div class="document-actions">'+(doc?'<a href="'+esc(doc.viewUrl)+'" target="_blank" rel="noopener">Xem</a><a href="'+esc(doc.downloadUrl||doc.viewUrl)+'" target="_blank" rel="noopener">Tải về</a>':'')+(canUpdate?'<button type="button" data-upload-document="'+type+'">'+(doc?'Cập nhật':'Tải lên')+'</button>':'')+'</div>'+documentHistoryHtml(doc)+'</article>'}).join('');
+ var cards=Object.keys(DOC_TYPES).map(function(type){var label=DOC_TYPES[type],doc=o.documents&&o.documents[type],canUpdate=canUpdateDocument(o,type),hint=type==='estimateFile'?'Chỉ Sale được tải một file JSON':'Nhận một file PDF, JPG hoặc PNG';return'<article class="document-card"><h4>▤ '+label+'</h4><div class="document-file">'+(doc?'<b title="'+esc(doc.name)+'">'+esc(doc.name)+'</b><small>Phiên bản '+Number(doc.version||1)+' · '+new Date(doc.updatedAt).toLocaleString('vi-VN')+'</small><small>'+esc(doc.updatedBy||'')+' · '+esc(doc.updatedEmail||'')+'</small>':'<b>Chưa có tài liệu</b><small>'+hint+'</small>')+'</div><div class="document-actions">'+(doc?'<a href="'+esc(doc.viewUrl)+'" target="_blank" rel="noopener">Xem</a><a href="'+esc(doc.downloadUrl||doc.viewUrl)+'" target="_blank" rel="noopener">Tải về</a>':'')+(canUpdate?'<button type="button" data-upload-document="'+type+'">'+(doc?'Cập nhật':'Tải lên')+'</button>':'')+'</div>'+documentHistoryHtml(doc)+'</article>'}).join('');
  return'<section class="documents-box"><div class="documents-head"><div><h3>Tài liệu đơn hàng</h3><small>File lưu trên Google Drive và chỉ chia sẻ theo email tài khoản.</small></div></div><div class="documents-grid">'+cards+'</div></section>';
 }
 function bindDocumentActions(o){$$('[data-upload-document]').forEach(function(b){b.onclick=function(){openDocumentUpload(o,b.dataset.uploadDocument)}})}
@@ -159,22 +160,27 @@ function postDrive(payload){
  });
 }
 function openDocumentUpload(o,type){
+ if(!canUpdateDocument(o,type))return toast(type==='estimateFile'?'Chỉ Sale phụ trách đơn được cập nhật file Dự toán.':'Bạn không có quyền cập nhật tài liệu này.');
  if(!user().email)return toast('Tài khoản chưa có email Google. Hãy liên hệ Admin cập nhật email.');
  if(!db.settings.documentUrl||!db.settings.documentToken)return toast('Admin chưa cấu hình Google Apps Script tài liệu.');
  var label=DOC_TYPES[type],current=o.documents[type];
  $('#quickTitle').textContent=(current?'Cập nhật ':'Tải lên ')+label;
- $('#quickBody').innerHTML='<div class="formcontent"><p class="handoff-note">Chỉ nhận một file PDF, JPG/JPEG hoặc PNG. File mới chỉ thay thế file cũ sau khi tải lên Google Drive thành công.</p><div class="field"><label>Chọn file PDF hoặc ảnh *</label><input type="file" name="documentFile" accept="application/pdf,image/jpeg,image/png,.pdf,.jpg,.jpeg,.png" required></div><div id="documentUploadProgress"></div></div><div class="modalactions"><button value="cancel">Hủy</button><button type="button" id="saveDocumentUpload" class="primary">'+(current?'Cập nhật file':'Tải lên Drive')+'</button></div>';
+ var isEstimate=type==='estimateFile',accept=isEstimate?'application/json,.json':'application/pdf,image/jpeg,image/png,.pdf,.jpg,.jpeg,.png';
+ $('#quickBody').innerHTML='<div class="formcontent"><p class="handoff-note">'+(isEstimate?'Chỉ nhận file JSON xuất từ phần mềm dự toán. Phần mềm sẽ đọc hạng mục, ĐVT, số lượng, đơn giá báo và thành tiền.':'Chỉ nhận một file PDF, JPG/JPEG hoặc PNG.')+' File mới chỉ thay thế file cũ sau khi tải lên Google Drive thành công.</p><div class="field"><label>'+(isEstimate?'Chọn file Dự toán JSON *':'Chọn file PDF hoặc ảnh *')+'</label><input type="file" name="documentFile" accept="'+accept+'" required></div><div id="documentUploadProgress"></div></div><div class="modalactions"><button value="cancel">Hủy</button><button type="button" id="saveDocumentUpload" class="primary">'+(current?'Cập nhật file':'Tải lên Drive')+'</button></div>';
  $('#quickDialog').showModal();
  $('#saveDocumentUpload').onclick=async function(){
-  var input=$('#quickForm [name="documentFile"]'),file=input.files&&input.files[0];if(!file)return toast('Vui lòng chọn file PDF hoặc ảnh.');
-  var extension=(file.name.toLowerCase().match(/\.[^.]+$/)||[''])[0],mimeByExtension={'.pdf':'application/pdf','.jpg':'image/jpeg','.jpeg':'image/jpeg','.png':'image/png'},mimeType=mimeByExtension[extension]||file.type;
-  if(!['application/pdf','image/jpeg','image/png'].includes(mimeType))return toast('Chỉ được tải file PDF, JPG/JPEG hoặc PNG.');
+  var input=$('#quickForm [name="documentFile"]'),file=input.files&&input.files[0];if(!file)return toast(isEstimate?'Vui lòng chọn file Dự toán JSON.':'Vui lòng chọn file PDF hoặc ảnh.');
+  var extension=(file.name.toLowerCase().match(/\.[^.]+$/)||[''])[0],mimeByExtension={'.pdf':'application/pdf','.jpg':'image/jpeg','.jpeg':'image/jpeg','.png':'image/png','.json':'application/json'},mimeType=mimeByExtension[extension]||file.type;
+  if(isEstimate&&extension!=='.json')return toast('Dự toán phải là file JSON.');
+  if(!isEstimate&&!['application/pdf','image/jpeg','image/png'].includes(mimeType))return toast('Chỉ được tải file PDF, JPG/JPEG hoặc PNG.');
   if(file.size>20*1024*1024)return toast('File không được lớn hơn 20 MB.');
   var button=$('#saveDocumentUpload'),progress=$('#documentUploadProgress');button.disabled=true;progress.innerHTML='<div class="upload-progress">Đang tải file lên Google Drive...</div>';setSaveStatus('saving','Đang tải tài liệu');
   try{
+   var estimateSnapshot=null;
+   if(isEstimate){var parsed=JSON.parse(await file.text()),sourceRows=Array.isArray(parsed.duLieuBaoGiaRows)?parsed.duLieuBaoGiaRows:[];var parsedRows=sourceRows.map(function(row){var quantity=Number(row.soLuong||0),unitPrice=Number(row.donGiaBaoGia||0);return{name:String(row.name||row.hangMuc||'').trim(),unit:String(row.donVi||row.unit||'').trim(),quantity:quantity,unitPrice:unitPrice,amount:Math.round(quantity*unitPrice)}}).filter(function(row){return row.name&&row.quantity>0&&row.unitPrice>=0});if(!parsedRows.length)throw new Error('File JSON không có dữ liệu báo giá hợp lệ (duLieuBaoGiaRows).');estimateSnapshot={rows:parsedRows,total:parsedRows.reduce(function(sum,row){return sum+row.amount},0),sourceCreatedAt:parsed.createdAt||'',readAt:new Date().toISOString()}}
    var encoded=await fileBase64(file),result=await postDrive({action:'upload',orderId:o.id,orderCode:o.code||o.id,documentType:type,documentLabel:label,fileName:file.name,mimeType:mimeType,dataBase64:encoded,oldFileId:current&&current.fileId||'',allowedEmails:emailsForOrder(o)});
    var history=current&&current.history?current.history.slice():[];history.unshift({id:uid(),action:current?'Cập nhật '+label:'Tải lên '+label,version:Number(current&&current.version||0)+1,oldName:current&&current.name||'',newName:result.name||file.name,by:user().name,email:user().email,at:new Date().toISOString()});
-   o.documents[type]={fileId:result.fileId,name:result.name||file.name,mimeType:mimeType,size:file.size,viewUrl:result.viewUrl,downloadUrl:result.downloadUrl,version:Number(current&&current.version||0)+1,updatedBy:user().name,updatedEmail:user().email,updatedAt:new Date().toISOString(),history:history};
+   o.documents[type]={fileId:result.fileId,name:result.name||file.name,mimeType:mimeType,size:file.size,viewUrl:result.viewUrl,downloadUrl:result.downloadUrl,version:Number(current&&current.version||0)+1,updatedBy:user().name,updatedEmail:user().email,updatedAt:new Date().toISOString(),history:history,estimateSnapshot:estimateSnapshot||(current&&current.estimateSnapshot)||null};
    log(o,(current?'Cập nhật ':'Tải lên ')+label+': '+file.name);save();render();$('#quickDialog').close();openOrder(o.id,'info');setSaveStatus('done','Đã tải tài liệu');toast('Đã lưu '+label+' lên Google Drive');
   }catch(err){console.error(err);progress.innerHTML='<div class="upload-progress danger">'+esc(err.message)+'</div>';setSaveStatus('error','Lỗi tải tài liệu');button.disabled=false}
  };

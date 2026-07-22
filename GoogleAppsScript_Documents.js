@@ -78,14 +78,14 @@ function syncPermissions_(payload){
 }
 
 function uploadDocument_(payload){
- var mime=String(payload.mimeType||''),allowed={'application/pdf':'.pdf','image/jpeg':'.jpg','image/png':'.png'};
- if(!allowed[mime])throw new Error('Chỉ chấp nhận file PDF, JPG/JPEG hoặc PNG.');
+ var mime=String(payload.mimeType||''),allowed={'application/pdf':'.pdf','image/jpeg':'.jpg','image/png':'.png','application/json':'.json'};
+ if(!allowed[mime])throw new Error('Chỉ chấp nhận file PDF, JPG/JPEG, PNG hoặc JSON.');
  var encoded=String(payload.dataBase64||'');if(!encoded)throw new Error('Không có dữ liệu file.');
  if(encoded.length>28*1024*1024)throw new Error('File vượt quá giới hạn 20 MB.');
- var type=String(payload.documentType||'');if(['quote','contract','drawing','extraDoc'].indexOf(type)<0)throw new Error('Loại tài liệu không hợp lệ.');
+ var type=String(payload.documentType||'');if(['quote','contract','drawing','extraDoc','estimateFile'].indexOf(type)<0)throw new Error('Loại tài liệu không hợp lệ.');
  var folder=orderFolder_(payload),emails=syncFolderViewers_(folder,payload.allowedEmails||[]);
- var original=safeName_(payload.fileName,'tai-lieu'+allowed[mime]);if(!/\.(pdf|jpe?g|png)$/i.test(original))original+=allowed[mime];
- var prefix={quote:'BAO_GIA',contract:'HOP_DONG',drawing:'BAN_VE',extraDoc:'PHAT_SINH'}[type];
+ var original=safeName_(payload.fileName,'tai-lieu'+allowed[mime]);if(!/\.(pdf|jpe?g|png|json)$/i.test(original))original+=allowed[mime];
+ var prefix={quote:'BAO_GIA',contract:'HOP_DONG',drawing:'BAN_VE',extraDoc:'PHAT_SINH',estimateFile:'DU_TOAN'}[type];
  var name=prefix+' - '+original;
  var blob=Utilities.newBlob(Utilities.base64Decode(encoded),mime,name);
  var file=folder.createFile(blob);
