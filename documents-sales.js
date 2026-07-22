@@ -1,7 +1,7 @@
 // Quản lý tài liệu PDF và phạm vi dữ liệu của Sale.
 (function(){
 var SALE_ROLE='Sale';
-var DOC_TYPES={quote:'Báo giá',contract:'Hợp đồng',drawing:'Bản vẽ',extraDoc:'Tài liệu phát sinh',estimateFile:'Dự toán'};
+var DOC_TYPES={quote:'Báo giá',contract:'Hợp đồng',drawing:'Bản vẽ',extraDoc:'Tài liệu phát sinh',estimateFile:'Dự toán / Gia công'};
 var MANAGER_ROLES=['Quản lý đơn hàng','Quản lý sản xuất','Giám đốc','Phó giám đốc','Admin'];
 if(!ROLES.includes(SALE_ROLE))ROLES.splice(1,0,SALE_ROLE);
 db.settings=db.settings||{};
@@ -140,8 +140,29 @@ function documentHistoryHtml(doc){
  var history=(doc&&doc.history)||[];if(!history.length)return'';
  return'<details class="document-history"><summary>Lịch sử cập nhật ('+history.length+')</summary>'+history.map(function(x){return'<div class="document-history-item"><b>'+esc(x.action||'Cập nhật')+(x.version?' · Phiên bản '+x.version:'')+'</b> · '+esc(x.by||'')+(x.email?' · '+esc(x.email):'')+'<br>'+esc(x.oldName||'Chưa có file')+' → '+esc(x.newName||'')+'<br>'+new Date(x.at).toLocaleString('vi-VN')+'</div>'}).join('')+'</details>';
 }
+function parseEstimateJson(parsed){
+ var sourceRows=Array.isArray(parsed&&parsed.duLieuBaoGiaRows)?parsed.duLieuBaoGiaRows:[];
+ if(sourceRows.length){
+  var interiorRows=sourceRows.map(function(row){var quantity=Number(row.soLuong||0),unitPrice=Number(row.donGiaBaoGia||0);return{name:String(row.name||row.hangMuc||'').trim(),groupName:String(row.tenHeBaoGia||'').trim(),unit:String(row.donVi||row.unit||'').trim(),quantity:quantity,unitPrice:unitPrice,amount:Math.round(quantity*unitPrice)}}).filter(function(row){return row.name&&row.quantity>0&&row.unitPrice>=0});
+  if(!interiorRows.length)throw new Error('File JSON không có dữ liệu báo giá hợp lệ (duLieuBaoGiaRows).');
+  return{rows:interiorRows,total:interiorRows.reduce(function(sum,row){return sum+row.amount},0),sourceType:'interior_estimate',sourceLabel:'Dự toán nội thất',sourceCreatedAt:parsed.createdAt||'',readAt:new Date().toISOString()};
+ }
+ var processingRows=Array.isArray(parsed&&parsed.lines)?parsed.lines:[];
+ if(processingRows.length){
+  var rows=processingRows.map(function(row){var quantity=Number(row.qty||0),unitPrice=Number(row.price||0),rawAmount=Number(row.total);var amount=Number.isFinite(rawAmount)?rawAmount:quantity*unitPrice;return{name:String(row.name||row.code||'').trim(),groupName:'',unit:String(row.unit||'').trim(),quantity:quantity,unitPrice:unitPrice,amount:Math.round(amount),sourceCode:String(row.code||'').trim(),dimensions:String(row.dimensions||'').trim()}}).filter(function(row){return row.name&&row.unit&&row.quantity>0&&row.unitPrice>=0&&row.amount>=0});
+  if(!rows.length)throw new Error('File JSON gia công không có hạng mục hợp lệ trong lines.');
+  var subtotal=rows.reduce(function(sum,row){return sum+row.amount},0),discount=Math.max(0,Number(parsed.discount||0)),shipping=Number(parsed.shipping||0),vat=Math.max(0,Number(parsed.vat||0)),beforeVat=subtotal-subtotal*discount/100+shipping,grand=Math.round(beforeVat+beforeVat*vat/100);
+  return{rows:rows,total:grand,subtotal:subtotal,discount:discount,shipping:shipping,vat:vat,sourceType:parsed.mode==='installation'?'installation_quote':'processing_quote',sourceLabel:parsed.mode==='installation'?'Báo giá lắp đặt':'Báo giá gia công',sourceCustomer:String(parsed.customerName||'').trim(),sourcePhone:String(parsed.customerPhone||'').trim(),sourceAddress:String(parsed.customerAddress||'').trim(),sourceProject:String(parsed.projectName||'').trim(),sourceQuoteCode:String(parsed.quoteCode||'').trim(),sourceQuoteDate:String(parsed.quoteDate||'').trim(),sourceCreatedAt:parsed.updatedAt||parsed.quoteDate||'',readAt:new Date().toISOString()};
+ }
+ throw new Error('File JSON không đúng định dạng Dự toán nội thất hoặc Báo giá gia công.');
+}
+function estimateSummaryHtml(doc){
+ var snapshot=doc&&doc.estimateSnapshot;if(!snapshot)return'';var detail=[snapshot.sourceLabel||'Dự toán',(snapshot.rows||[]).length+' hạng mục',money(snapshot.total||0)];
+ if(snapshot.sourceQuoteCode)detail.push(snapshot.sourceQuoteCode);if(snapshot.sourceQuoteDate)detail.push(new Date(snapshot.sourceQuoteDate+'T00:00:00').toLocaleDateString('vi-VN'));
+ return'<small class="estimate-summary">'+detail.map(esc).join(' · ')+'</small>'+(snapshot.sourceCustomer?'<small title="'+esc(snapshot.sourceCustomer)+'">Khách từ file: '+esc(snapshot.sourceCustomer)+(snapshot.sourcePhone?' · '+esc(snapshot.sourcePhone):'')+'</small>':'');
+}
 function renderDocumentSection(o){
- var cards=Object.keys(DOC_TYPES).map(function(type){var label=DOC_TYPES[type],doc=o.documents&&o.documents[type],canUpdate=canUpdateDocument(o,type),hint=type==='estimateFile'?'Sale phụ trách hoặc Quản lý Sale được tải file JSON':'Nhận một file PDF, JPG hoặc PNG';return'<article class="document-card"><h4>▤ '+label+'</h4><div class="document-file">'+(doc?'<b title="'+esc(doc.name)+'">'+esc(doc.name)+'</b><small>Phiên bản '+Number(doc.version||1)+' · '+new Date(doc.updatedAt).toLocaleString('vi-VN')+'</small><small>'+esc(doc.updatedBy||'')+' · '+esc(doc.updatedEmail||'')+'</small>':'<b>Chưa có tài liệu</b><small>'+hint+'</small>')+'</div><div class="document-actions">'+(doc?'<a href="'+esc(doc.viewUrl)+'" target="_blank" rel="noopener">Xem</a><a href="'+esc(doc.downloadUrl||doc.viewUrl)+'" target="_blank" rel="noopener">Tải về</a>':'')+(canUpdate?'<button type="button" data-upload-document="'+type+'">'+(doc?'Cập nhật':'Tải lên')+'</button>':'')+'</div>'+documentHistoryHtml(doc)+'</article>'}).join('');
+ var cards=Object.keys(DOC_TYPES).map(function(type){var label=DOC_TYPES[type],doc=o.documents&&o.documents[type],canUpdate=canUpdateDocument(o,type),hint=type==='estimateFile'?'Nhận JSON Dự toán nội thất hoặc Báo giá gia công':'Nhận một file PDF, JPG hoặc PNG';return'<article class="document-card"><h4>▤ '+label+'</h4><div class="document-file">'+(doc?'<b title="'+esc(doc.name)+'">'+esc(doc.name)+'</b><small>Phiên bản '+Number(doc.version||1)+' · '+new Date(doc.updatedAt).toLocaleString('vi-VN')+'</small><small>'+esc(doc.updatedBy||'')+' · '+esc(doc.updatedEmail||'')+'</small>'+estimateSummaryHtml(doc):'<b>Chưa có tài liệu</b><small>'+hint+'</small>')+'</div><div class="document-actions">'+(doc?'<a href="'+esc(doc.viewUrl)+'" target="_blank" rel="noopener">Xem</a><a href="'+esc(doc.downloadUrl||doc.viewUrl)+'" target="_blank" rel="noopener">Tải về</a>':'')+(canUpdate?'<button type="button" data-upload-document="'+type+'">'+(doc?'Cập nhật':'Tải lên')+'</button>':'')+'</div>'+documentHistoryHtml(doc)+'</article>'}).join('');
  return'<section class="documents-box"><div class="documents-head"><div><h3>Tài liệu đơn hàng</h3><small>File lưu trên Google Drive và chỉ chia sẻ theo email tài khoản.</small></div></div><div class="documents-grid">'+cards+'</div></section>';
 }
 function bindDocumentActions(o){$$('[data-upload-document]').forEach(function(b){b.onclick=function(){openDocumentUpload(o,b.dataset.uploadDocument)}})}
@@ -166,7 +187,7 @@ function openDocumentUpload(o,type){
  var label=DOC_TYPES[type],current=o.documents[type];
  $('#quickTitle').textContent=(current?'Cập nhật ':'Tải lên ')+label;
  var isEstimate=type==='estimateFile',accept=isEstimate?'application/json,.json':'application/pdf,image/jpeg,image/png,.pdf,.jpg,.jpeg,.png';
- $('#quickBody').innerHTML='<div class="formcontent"><p class="handoff-note">'+(isEstimate?'Chỉ nhận file JSON xuất từ phần mềm dự toán. Phần mềm sẽ đọc hạng mục, ĐVT, số lượng, đơn giá báo và thành tiền.':'Chỉ nhận một file PDF, JPG/JPEG hoặc PNG.')+' File mới chỉ thay thế file cũ sau khi tải lên Google Drive thành công.</p><div class="field"><label>'+(isEstimate?'Chọn file Dự toán JSON *':'Chọn file PDF hoặc ảnh *')+'</label><input type="file" name="documentFile" accept="'+accept+'" required></div><div id="documentUploadProgress"></div></div><div class="modalactions"><button value="cancel">Hủy</button><button type="button" id="saveDocumentUpload" class="primary">'+(current?'Cập nhật file':'Tải lên Drive')+'</button></div>';
+ $('#quickBody').innerHTML='<div class="formcontent"><p class="handoff-note">'+(isEstimate?'Nhận file JSON từ phần mềm Dự toán nội thất hoặc Báo giá gia công. Phần mềm sẽ tự nhận diện, đọc hạng mục, ĐVT, số lượng, đơn giá, thành tiền và tổng thanh toán.':'Chỉ nhận một file PDF, JPG/JPEG hoặc PNG.')+' File mới chỉ thay thế file cũ sau khi tải lên Google Drive thành công.</p><div class="field"><label>'+(isEstimate?'Chọn file Dự toán / Gia công JSON *':'Chọn file PDF hoặc ảnh *')+'</label><input type="file" name="documentFile" accept="'+accept+'" required></div><div id="documentUploadProgress"></div></div><div class="modalactions"><button value="cancel">Hủy</button><button type="button" id="saveDocumentUpload" class="primary">'+(current?'Cập nhật file':'Tải lên Drive')+'</button></div>';
  $('#quickDialog').showModal();
  $('#saveDocumentUpload').onclick=async function(){
   var input=$('#quickForm [name="documentFile"]'),file=input.files&&input.files[0];if(!file)return toast(isEstimate?'Vui lòng chọn file Dự toán JSON.':'Vui lòng chọn file PDF hoặc ảnh.');
@@ -177,10 +198,11 @@ function openDocumentUpload(o,type){
   var button=$('#saveDocumentUpload'),progress=$('#documentUploadProgress');button.disabled=true;progress.innerHTML='<div class="upload-progress">Đang tải file lên Google Drive...</div>';setSaveStatus('saving','Đang tải tài liệu');
   try{
    var estimateSnapshot=null;
-   if(isEstimate){var parsed=JSON.parse(await file.text()),sourceRows=Array.isArray(parsed.duLieuBaoGiaRows)?parsed.duLieuBaoGiaRows:[];var parsedRows=sourceRows.map(function(row){var quantity=Number(row.soLuong||0),unitPrice=Number(row.donGiaBaoGia||0);return{name:String(row.name||row.hangMuc||'').trim(),groupName:String(row.tenHeBaoGia||'').trim(),unit:String(row.donVi||row.unit||'').trim(),quantity:quantity,unitPrice:unitPrice,amount:Math.round(quantity*unitPrice)}}).filter(function(row){return row.name&&row.quantity>0&&row.unitPrice>=0});if(!parsedRows.length)throw new Error('File JSON không có dữ liệu báo giá hợp lệ (duLieuBaoGiaRows).');estimateSnapshot={rows:parsedRows,total:parsedRows.reduce(function(sum,row){return sum+row.amount},0),sourceCreatedAt:parsed.createdAt||'',readAt:new Date().toISOString()}}
+   if(isEstimate){estimateSnapshot=parseEstimateJson(JSON.parse(await file.text()))}
    var encoded=await fileBase64(file),result=await postDrive({action:'upload',orderId:o.id,orderCode:o.code||o.id,documentType:type,documentLabel:label,fileName:file.name,mimeType:mimeType,dataBase64:encoded,oldFileId:current&&current.fileId||'',allowedEmails:emailsForOrder(o)});
    var history=current&&current.history?current.history.slice():[];history.unshift({id:uid(),action:current?'Cập nhật '+label:'Tải lên '+label,version:Number(current&&current.version||0)+1,oldName:current&&current.name||'',newName:result.name||file.name,by:user().name,email:user().email,at:new Date().toISOString()});
    o.documents[type]={fileId:result.fileId,name:result.name||file.name,mimeType:mimeType,size:file.size,viewUrl:result.viewUrl,downloadUrl:result.downloadUrl,version:Number(current&&current.version||0)+1,updatedBy:user().name,updatedEmail:user().email,updatedAt:new Date().toISOString(),history:history,estimateSnapshot:estimateSnapshot||(current&&current.estimateSnapshot)||null};
+   if(estimateSnapshot&&/_(quote)$/.test(estimateSnapshot.sourceType||'')){o.quote=Number(estimateSnapshot.total||0);if(!String(o.customer||'').trim()&&estimateSnapshot.sourceCustomer)o.customer=estimateSnapshot.sourceCustomer;if(!String(o.phone||'').trim()&&estimateSnapshot.sourcePhone)o.phone=estimateSnapshot.sourcePhone;if(!String(o.address||'').trim()&&estimateSnapshot.sourceAddress)o.address=estimateSnapshot.sourceAddress;if(!String(o.content||'').trim()&&estimateSnapshot.sourceProject)o.content=estimateSnapshot.sourceProject}
    log(o,(current?'Cập nhật ':'Tải lên ')+label+': '+file.name);save();render();$('#quickDialog').close();openOrder(o.id,'info');setSaveStatus('done','Đã tải tài liệu');toast('Đã lưu '+label+' lên Google Drive');
   }catch(err){console.error(err);progress.innerHTML='<div class="upload-progress danger">'+esc(err.message)+'</div>';setSaveStatus('error','Lỗi tải tài liệu');button.disabled=false}
  };
