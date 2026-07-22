@@ -28,7 +28,7 @@ function canSeeOrder(o){return !isSale()||(o.saleOwnerId===user().id&&o.stage!==
 function sales(){return(db.users||[]).filter(function(u){return u.active&&u.role===SALE_ROLE})}
 function assignedSale(o){return(db.users||[]).find(function(u){return u.id===o.saleOwnerId&&u.active&&u.role===SALE_ROLE})}
 function canUpdateDocuments(o){if(isSale())return canSeeOrder(o);return MANAGER_ROLES.includes(user().role)}
-function canUpdateDocument(o,type){if(type==='estimateFile')return isSale()&&canSeeOrder(o);return canUpdateDocuments(o)}
+function canUpdateDocument(o,type){if(type==='estimateFile')return(isSale()&&canSeeOrder(o))||user().role==='Quản lý đơn hàng';return canUpdateDocuments(o)}
 function emailsForOrder(o){var list=(db.users||[]).filter(function(u){return u.active&&u.email&&u.role!==SALE_ROLE}).map(function(u){return u.email});var sale=assignedSale(o);if(sale&&sale.email)list.push(sale.email);return Array.from(new Set(list.map(function(x){return x.toLowerCase()})))}
 function withVisibleOrders(fn){if(!isSale())return fn();var all=db.orders;db.orders=all.filter(canSeeOrder);try{return fn()}finally{db.orders=all}}
 
@@ -141,7 +141,7 @@ function documentHistoryHtml(doc){
  return'<details class="document-history"><summary>Lịch sử cập nhật ('+history.length+')</summary>'+history.map(function(x){return'<div class="document-history-item"><b>'+esc(x.action||'Cập nhật')+(x.version?' · Phiên bản '+x.version:'')+'</b> · '+esc(x.by||'')+(x.email?' · '+esc(x.email):'')+'<br>'+esc(x.oldName||'Chưa có file')+' → '+esc(x.newName||'')+'<br>'+new Date(x.at).toLocaleString('vi-VN')+'</div>'}).join('')+'</details>';
 }
 function renderDocumentSection(o){
- var cards=Object.keys(DOC_TYPES).map(function(type){var label=DOC_TYPES[type],doc=o.documents&&o.documents[type],canUpdate=canUpdateDocument(o,type),hint=type==='estimateFile'?'Chỉ Sale được tải một file JSON':'Nhận một file PDF, JPG hoặc PNG';return'<article class="document-card"><h4>▤ '+label+'</h4><div class="document-file">'+(doc?'<b title="'+esc(doc.name)+'">'+esc(doc.name)+'</b><small>Phiên bản '+Number(doc.version||1)+' · '+new Date(doc.updatedAt).toLocaleString('vi-VN')+'</small><small>'+esc(doc.updatedBy||'')+' · '+esc(doc.updatedEmail||'')+'</small>':'<b>Chưa có tài liệu</b><small>'+hint+'</small>')+'</div><div class="document-actions">'+(doc?'<a href="'+esc(doc.viewUrl)+'" target="_blank" rel="noopener">Xem</a><a href="'+esc(doc.downloadUrl||doc.viewUrl)+'" target="_blank" rel="noopener">Tải về</a>':'')+(canUpdate?'<button type="button" data-upload-document="'+type+'">'+(doc?'Cập nhật':'Tải lên')+'</button>':'')+'</div>'+documentHistoryHtml(doc)+'</article>'}).join('');
+ var cards=Object.keys(DOC_TYPES).map(function(type){var label=DOC_TYPES[type],doc=o.documents&&o.documents[type],canUpdate=canUpdateDocument(o,type),hint=type==='estimateFile'?'Sale phụ trách hoặc Quản lý Sale được tải file JSON':'Nhận một file PDF, JPG hoặc PNG';return'<article class="document-card"><h4>▤ '+label+'</h4><div class="document-file">'+(doc?'<b title="'+esc(doc.name)+'">'+esc(doc.name)+'</b><small>Phiên bản '+Number(doc.version||1)+' · '+new Date(doc.updatedAt).toLocaleString('vi-VN')+'</small><small>'+esc(doc.updatedBy||'')+' · '+esc(doc.updatedEmail||'')+'</small>':'<b>Chưa có tài liệu</b><small>'+hint+'</small>')+'</div><div class="document-actions">'+(doc?'<a href="'+esc(doc.viewUrl)+'" target="_blank" rel="noopener">Xem</a><a href="'+esc(doc.downloadUrl||doc.viewUrl)+'" target="_blank" rel="noopener">Tải về</a>':'')+(canUpdate?'<button type="button" data-upload-document="'+type+'">'+(doc?'Cập nhật':'Tải lên')+'</button>':'')+'</div>'+documentHistoryHtml(doc)+'</article>'}).join('');
  return'<section class="documents-box"><div class="documents-head"><div><h3>Tài liệu đơn hàng</h3><small>File lưu trên Google Drive và chỉ chia sẻ theo email tài khoản.</small></div></div><div class="documents-grid">'+cards+'</div></section>';
 }
 function bindDocumentActions(o){$$('[data-upload-document]').forEach(function(b){b.onclick=function(){openDocumentUpload(o,b.dataset.uploadDocument)}})}
@@ -160,7 +160,7 @@ function postDrive(payload){
  });
 }
 function openDocumentUpload(o,type){
- if(!canUpdateDocument(o,type))return toast(type==='estimateFile'?'Chỉ Sale phụ trách đơn được cập nhật file Dự toán.':'Bạn không có quyền cập nhật tài liệu này.');
+ if(!canUpdateDocument(o,type))return toast(type==='estimateFile'?'Chỉ Sale phụ trách hoặc Quản lý Sale được cập nhật file Dự toán.':'Bạn không có quyền cập nhật tài liệu này.');
  if(!user().email)return toast('Tài khoản chưa có email Google. Hãy liên hệ Admin cập nhật email.');
  if(!db.settings.documentUrl||!db.settings.documentToken)return toast('Admin chưa cấu hình Google Apps Script tài liệu.');
  var label=DOC_TYPES[type],current=o.documents[type];
