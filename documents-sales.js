@@ -175,16 +175,21 @@ function driveMessageOriginAllowed(origin,configuredUrl){
   return incoming.hostname==='script.google.com'||incoming.hostname==='script.googleusercontent.com'||incoming.hostname.endsWith('.script.googleusercontent.com');
  }catch(_){return false}
 }
+function driveRequestId(){return globalThis.crypto&&typeof globalThis.crypto.randomUUID==='function'?globalThis.crypto.randomUUID():uid()+'_'+uid()}
+function driveMessageAllowed(event,payload,configuredUrl){
+ var data=event&&event.data;if(!event||!event.source||!data||data.source!=='gomita-documents'||data.requestId!==payload.requestId)return false;
+ var origin=String(event.origin||'');return origin==='null'||driveMessageOriginAllowed(origin,configuredUrl);
+}
 function postDrive(payload){
  return new Promise(function(resolve,reject){
   var url=db.settings.documentUrl,token=db.settings.documentToken;if(!url||!token){reject(new Error('Chưa cấu hình Google Apps Script tài liệu.'));return}
-  payload.token=token;payload.requestId=payload.requestId||uid();
+  payload.token=token;payload.requestId=payload.requestId||driveRequestId();
   var frame=document.createElement('iframe'),name='gomita_drive_'+payload.requestId;frame.name=name;frame.style.display='none';
   var form=document.createElement('form');form.method='POST';form.action=url;form.target=name;form.style.display='none';
   var field=document.createElement('textarea');field.name='payload';field.value=JSON.stringify(payload);form.appendChild(field);
   var timer=setTimeout(done,120000,new Error('Google Drive phản hồi quá thời gian.'));
   function done(err,data){clearTimeout(timer);window.removeEventListener('message',onMessage);setTimeout(function(){frame.remove();form.remove()},100);if(err)reject(err);else resolve(data)}
-  function onMessage(event){var data=event.data;if(event.source!==frame.contentWindow||!driveMessageOriginAllowed(event.origin,url))return;if(!data||data.source!=='gomita-documents'||data.requestId!==payload.requestId)return;if(data.success)done(null,data);else done(new Error(data.error||'Google Drive từ chối yêu cầu.'))}
+  function onMessage(event){if(!driveMessageAllowed(event,payload,url))return;var data=event.data;if(data.success)done(null,data);else done(new Error(data.error||'Google Drive t\u1eeb ch\u1ed1i y\u00eau c\u1ea7u.'))}
   window.addEventListener('message',onMessage);document.body.appendChild(frame);document.body.appendChild(form);form.submit();
  });
 }
@@ -235,7 +240,7 @@ async function syncAllDocumentPermissions(silent){
  var failed=0;for(var i=0;i<db.orders.length;i++){if(!await syncOrderDocumentPermissions(db.orders[i],true))failed++}
  if(btn){btn.disabled=false;btn.textContent='Đồng bộ quyền Drive'}if(!silent)toast(failed?'Có '+failed+' đơn chưa đồng bộ quyền.':'Đã đồng bộ quyền Google Drive');
 }
-window.GOMITA_DOCUMENT_SAFETY={driveMessageOriginAllowed:driveMessageOriginAllowed};
+window.GOMITA_DOCUMENT_SAFETY={driveMessageOriginAllowed:driveMessageOriginAllowed,driveMessageAllowed:driveMessageAllowed,driveRequestId:driveRequestId};
 applySaleNavigation();
 if(!document.body.classList.contains('logged-out'))render();
 })();
