@@ -167,6 +167,14 @@ function renderDocumentSection(o){
 }
 function bindDocumentActions(o){$$('[data-upload-document]').forEach(function(b){b.onclick=function(){openDocumentUpload(o,b.dataset.uploadDocument)}})}
 function fileBase64(file){return new Promise(function(resolve,reject){var reader=new FileReader();reader.onload=function(){resolve(String(reader.result).split(',')[1]||'')};reader.onerror=function(){reject(new Error('Không đọc được file'))};reader.readAsDataURL(file)})}
+function driveMessageOriginAllowed(origin,configuredUrl){
+ try{
+  var incoming=new URL(origin),configured=new URL(configuredUrl);
+  if(incoming.protocol!=='https:')return false;
+  if(incoming.origin===configured.origin)return true;
+  return incoming.hostname==='script.google.com'||incoming.hostname==='script.googleusercontent.com'||incoming.hostname.endsWith('.script.googleusercontent.com');
+ }catch(_){return false}
+}
 function postDrive(payload){
  return new Promise(function(resolve,reject){
   var url=db.settings.documentUrl,token=db.settings.documentToken;if(!url||!token){reject(new Error('Chưa cấu hình Google Apps Script tài liệu.'));return}
@@ -176,7 +184,7 @@ function postDrive(payload){
   var field=document.createElement('textarea');field.name='payload';field.value=JSON.stringify(payload);form.appendChild(field);
   var timer=setTimeout(done,120000,new Error('Google Drive phản hồi quá thời gian.'));
   function done(err,data){clearTimeout(timer);window.removeEventListener('message',onMessage);setTimeout(function(){frame.remove();form.remove()},100);if(err)reject(err);else resolve(data)}
-  function onMessage(event){var data=event.data;if(!data||data.source!=='gomita-documents'||data.requestId!==payload.requestId)return;if(data.success)done(null,data);else done(new Error(data.error||'Google Drive từ chối yêu cầu.'))}
+  function onMessage(event){var data=event.data;if(event.source!==frame.contentWindow||!driveMessageOriginAllowed(event.origin,url))return;if(!data||data.source!=='gomita-documents'||data.requestId!==payload.requestId)return;if(data.success)done(null,data);else done(new Error(data.error||'Google Drive từ chối yêu cầu.'))}
   window.addEventListener('message',onMessage);document.body.appendChild(frame);document.body.appendChild(form);form.submit();
  });
 }
@@ -197,13 +205,23 @@ function openDocumentUpload(o,type){
   if(file.size>20*1024*1024)return toast('File không được lớn hơn 20 MB.');
   var button=$('#saveDocumentUpload'),progress=$('#documentUploadProgress');button.disabled=true;progress.innerHTML='<div class="upload-progress">Đang tải file lên Google Drive...</div>';setSaveStatus('saving','Đang tải tài liệu');
   try{
-   var estimateSnapshot=null;
-   if(isEstimate){estimateSnapshot=parseEstimateJson(JSON.parse(await file.text()))}
+   var estimateSnapshot=null,applyQuotePrice=true,oldQuote=Number(o.quote||0);
+   if(isEstimate){
+    estimateSnapshot=parseEstimateJson(JSON.parse(await file.text()));
+    if(/_(quote)$/.test(estimateSnapshot.sourceType||'')){
+     var normalized=function(v){return String(v||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'')},warnings=[];
+     if(estimateSnapshot.sourceCustomer&&o.customer&&normalized(estimateSnapshot.sourceCustomer)!==normalized(o.customer))warnings.push('Kh\u00e1ch trong file: '+estimateSnapshot.sourceCustomer+' / \u0111\u01a1n h\u00e0ng: '+o.customer);
+     if(estimateSnapshot.sourcePhone&&o.phone&&normalized(estimateSnapshot.sourcePhone)!==normalized(o.phone))warnings.push('\u0110i\u1ec7n tho\u1ea1i trong file: '+estimateSnapshot.sourcePhone+' / \u0111\u01a1n h\u00e0ng: '+o.phone);
+     var promptText='FILE B\u00c1O GI\u00c1 GIA C\u00d4NG\n'+(estimateSnapshot.sourceQuoteCode?'S\u1ed1 b\u00e1o gi\u00e1: '+estimateSnapshot.sourceQuoteCode+'\n':'')+(estimateSnapshot.sourceQuoteDate?'Ng\u00e0y b\u00e1o gi\u00e1: '+estimateSnapshot.sourceQuoteDate+'\n':'')+'Gi\u00e1 hi\u1ec7n t\u1ea1i: '+money(oldQuote)+'\nGi\u00e1 trong file: '+money(estimateSnapshot.total||0)+'\nCh\u00eanh l\u1ec7ch: '+money(Number(estimateSnapshot.total||0)-oldQuote)+(warnings.length?'\n\nC\u1ea2NH B\u00c1O KH\u00d4NG KH\u1edaP:\n- '+warnings.join('\n- '):'')+'\n\nB\u1ea5m OK: t\u1ea3i file v\u00e0 C\u1eacP NH\u1eacT gi\u00e1 b\u00e1o kh\u00e1ch.\nB\u1ea5m H\u1ee6Y: v\u1eabn t\u1ea3i file nh\u01b0ng GI\u1eee NGUY\u00caN gi\u00e1 hi\u1ec7n t\u1ea1i.';
+     applyQuotePrice=window.confirm(promptText);
+    }
+   }
    var encoded=await fileBase64(file),result=await postDrive({action:'upload',orderId:o.id,orderCode:o.code||o.id,documentType:type,documentLabel:label,fileName:file.name,mimeType:mimeType,dataBase64:encoded,oldFileId:current&&current.fileId||'',allowedEmails:emailsForOrder(o)});
    var history=current&&current.history?current.history.slice():[];history.unshift({id:uid(),action:current?'Cập nhật '+label:'Tải lên '+label,version:Number(current&&current.version||0)+1,oldName:current&&current.name||'',newName:result.name||file.name,by:user().name,email:user().email,at:new Date().toISOString()});
    o.documents[type]={fileId:result.fileId,name:result.name||file.name,mimeType:mimeType,size:file.size,viewUrl:result.viewUrl,downloadUrl:result.downloadUrl,version:Number(current&&current.version||0)+1,updatedBy:user().name,updatedEmail:user().email,updatedAt:new Date().toISOString(),history:history,estimateSnapshot:estimateSnapshot||(current&&current.estimateSnapshot)||null};
-   if(estimateSnapshot&&/_(quote)$/.test(estimateSnapshot.sourceType||'')){o.quote=Number(estimateSnapshot.total||0);if(!String(o.customer||'').trim()&&estimateSnapshot.sourceCustomer)o.customer=estimateSnapshot.sourceCustomer;if(!String(o.phone||'').trim()&&estimateSnapshot.sourcePhone)o.phone=estimateSnapshot.sourcePhone;if(!String(o.address||'').trim()&&estimateSnapshot.sourceAddress)o.address=estimateSnapshot.sourceAddress;if(!String(o.content||'').trim()&&estimateSnapshot.sourceProject)o.content=estimateSnapshot.sourceProject}
-   log(o,(current?'Cập nhật ':'Tải lên ')+label+': '+file.name);save();render();$('#quickDialog').close();openOrder(o.id,'info');setSaveStatus('done','Đã tải tài liệu');toast('Đã lưu '+label+' lên Google Drive');
+   var quoteChanged=false,newQuote=Number(estimateSnapshot&&estimateSnapshot.total||0);
+   if(estimateSnapshot&&/_(quote)$/.test(estimateSnapshot.sourceType||'')&&applyQuotePrice){o.quote=newQuote;quoteChanged=oldQuote!==newQuote;if(!String(o.customer||'').trim()&&estimateSnapshot.sourceCustomer)o.customer=estimateSnapshot.sourceCustomer;if(!String(o.phone||'').trim()&&estimateSnapshot.sourcePhone)o.phone=estimateSnapshot.sourcePhone;if(!String(o.address||'').trim()&&estimateSnapshot.sourceAddress)o.address=estimateSnapshot.sourceAddress;if(!String(o.content||'').trim()&&estimateSnapshot.sourceProject)o.content=estimateSnapshot.sourceProject}
+   var priceLog=quoteChanged?' \u00b7 Gi\u00e1 b\u00e1o kh\u00e1ch '+money(oldQuote)+' \u2192 '+money(newQuote):estimateSnapshot&&/_(quote)$/.test(estimateSnapshot.sourceType||'')&&!applyQuotePrice?' \u00b7 Gi\u1eef nguy\u00ean gi\u00e1 b\u00e1o kh\u00e1ch':'';log(o,(current?'C\u1eadp nh\u1eadt ':'T\u1ea3i l\u00ean ')+label+': '+file.name+priceLog);save();render();$('#quickDialog').close();openOrder(o.id,'info');setSaveStatus('done','\u0110\u00e3 t\u1ea3i t\u00e0i li\u1ec7u');toast('\u0110\u00e3 l\u01b0u '+label+' l\u00ean Google Drive'+priceLog);
   }catch(err){console.error(err);progress.innerHTML='<div class="upload-progress danger">'+esc(err.message)+'</div>';setSaveStatus('error','Lỗi tải tài liệu');button.disabled=false}
  };
 }
@@ -217,6 +235,7 @@ async function syncAllDocumentPermissions(silent){
  var failed=0;for(var i=0;i<db.orders.length;i++){if(!await syncOrderDocumentPermissions(db.orders[i],true))failed++}
  if(btn){btn.disabled=false;btn.textContent='Đồng bộ quyền Drive'}if(!silent)toast(failed?'Có '+failed+' đơn chưa đồng bộ quyền.':'Đã đồng bộ quyền Google Drive');
 }
+window.GOMITA_DOCUMENT_SAFETY={driveMessageOriginAllowed:driveMessageOriginAllowed};
 applySaleNavigation();
 if(!document.body.classList.contains('logged-out'))render();
 })();

@@ -76,7 +76,7 @@ function archiveOrderV2(o){
 }
 
 function renderArchiveV2(){
-  const rows=db.orders.filter(o=>o.stage==='Lưu trữ').map(o=>{const c=calc(o);return '<tr data-archive-open="'+o.id+'"><td><b>'+esc(o.code)+'</b></td><td>'+esc(o.customer)+'</td><td>'+esc(o.owner)+'</td><td>'+money(c.productionRevenue)+'</td><td>'+money(c.accessoryRevenue)+'</td><td>'+money(c.profit)+'</td><td>'+fmtDate(o.due)+'</td></tr>'}).join('');
+  const rows=db.orders.filter(o=>!o.deletedAt&&o.stage==='Lưu trữ').map(o=>{const c=calc(o);return '<tr data-archive-open="'+o.id+'"><td><b>'+esc(o.code)+'</b></td><td>'+esc(o.customer)+'</td><td>'+esc(o.owner)+'</td><td>'+money(c.productionRevenue)+'</td><td>'+money(c.accessoryRevenue)+'</td><td>'+money(c.profit)+'</td><td>'+fmtDate(o.due)+'</td></tr>'}).join('');
   $('#archiveContent').innerHTML=rows?'<table class="data"><thead><tr><th>Mã đơn</th><th>Khách hàng</th><th>Phụ trách</th><th>Doanh thu sản xuất</th><th>Doanh thu phụ kiện</th><th>Lợi nhuận</th><th>Ngày hẹn</th></tr></thead><tbody>'+rows+'</tbody></table>':'<div class="empty-state"><div class="empty-icon">▣</div><h3>Chưa có đơn lưu trữ</h3><p>Đơn hoàn công sẽ xuất hiện tại đây sau khi Kế toán đối soát xong.</p></div>';
   $$('[data-archive-open]').forEach(x=>x.onclick=()=>openOrder(x.dataset.archiveOpen));
 }

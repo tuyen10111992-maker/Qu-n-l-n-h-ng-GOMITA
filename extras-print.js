@@ -1,5 +1,5 @@
 (function(){
-var C={name:'CÔNG TY NỘI THẤT GOMITA',phone:'0837.39.8686',website:'www.gomita.com',address:'Hải Phòng'};
+var C=window.GOMITA_COMPANY||{name:'GOMITA',phone:'0837.39.8686',website:'www.gomita.com',address:'Hai Phong'};
 function h(v){return String(v==null?'':v).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;')}
 function num(v){return Number(v||0).toLocaleString('vi-VN')}function code(o){return String(o.code||o.id||'')}function date(v){if(!v)return'';var p=String(v).split('-');return p.length===3?p[2]+'/'+p[1]+'/'+p[0]:v}
 function inputDate(v){if(!v)return'';var d=new Date(v);if(isNaN(d.getTime()))return String(v).slice(0,10);return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10)}
