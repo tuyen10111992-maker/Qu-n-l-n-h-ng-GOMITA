@@ -20,7 +20,7 @@
   </section>
   <header class="topbar">
     <div class="brand"><div class="logo">G</div><div><b>Gomita Flow</b><small>Quản lý đơn nội thất</small></div></div>
-    <nav><button class="nav active" data-view="kanban">▦ Đơn hàng</button><button class="nav" data-view="archive">▣ Lưu trữ</button><button class="nav" data-view="reports">⌁ Theo dõi & báo cáo</button><button class="nav admin-nav" data-view="accounts">♙ Tài khoản</button><button class="nav admin-nav" data-view="trash">⎚ Thùng rác</button></nav>
+    <nav><button class="nav active" data-view="kanban">▦ Đơn hàng</button><button class="nav" data-view="customers">♙ Khách hàng</button><button class="nav" data-view="archive">▣ Lưu trữ</button><button class="nav" data-view="reports">⌁ Theo dõi & báo cáo</button><button class="nav admin-nav" data-view="accounts">♙ Tài khoản</button><button class="nav admin-nav" data-view="trash">⎚ Thùng rác</button></nav>
     <div id="saveStatus" class="save-status running"><i></i><span>Đang chạy</span></div><div class="user"><span id="roleBadge"></span><strong id="currentName"></strong><button id="logoutButton" title="Đăng xuất">↪</button></div>
   </header>
   <main>
@@ -35,6 +35,10 @@
       <div id="metrics" class="metrics"></div>
       <div class="report-tabs"><button class="rTab active" data-report="orders">Tổng hợp</button><button class="rTab" data-report="debt">Công nợ</button><button class="rTab" data-report="profit">Lãi / lỗ</button><button class="rTab" data-report="staff">Hiệu suất nhân sự</button></div>
       <div id="reportContent" class="panel"></div>
+    </section>
+    <section id="customersView" class="view">
+      <div class="pagehead customers-pagehead"><div><h1>Quản lý khách hàng</h1><p>Các đơn có cùng số điện thoại được tổng hợp thành một khách hàng.</p></div><div class="toolbar"><label class="search">⌕ <input id="customerSearch" placeholder="Tên, số điện thoại, mã khách..."></label><select id="customerSort"><option value="revenue_desc">Doanh thu: cao đến thấp</option><option value="revenue_asc">Doanh thu: thấp đến cao</option><option value="debt_desc">Công nợ: cao đến thấp</option><option value="debt_asc">Công nợ: thấp đến cao</option><option value="name_asc">Tên khách hàng A–Z</option></select></div></div>
+      <div id="customerMetrics" class="customer-metrics"></div><div class="panel" id="customersContent"></div>
     </section>
     <section id="archiveView" class="view">
       <div class="pagehead"><div><h1>Đơn hàng lưu trữ</h1><p>Các đơn đã hoàn tất đối soát và được Kế toán lưu trữ.</p></div></div>
@@ -68,5 +72,6 @@
   <script src="invoice.js?v=1.0.9"></script>
   <script src="workflow-tasks-mobile.js?v=1.0.7"></script>
   <script src="admin-google-recovery.js?v=1.0.0"></script>
+  <script src="customers.js?v=1.0.0"></script>
 </body>
 </html>
