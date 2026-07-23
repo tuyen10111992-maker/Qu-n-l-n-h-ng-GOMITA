@@ -172,7 +172,7 @@ function driveMessageOriginAllowed(origin,configuredUrl){
   var incoming=new URL(origin),configured=new URL(configuredUrl);
   if(incoming.protocol!=='https:')return false;
   if(incoming.origin===configured.origin)return true;
-  return incoming.hostname==='script.google.com'||incoming.hostname==='script.googleusercontent.com'||incoming.hostname.endsWith('.script.googleusercontent.com');
+  return incoming.hostname==='script.google.com'||incoming.hostname==='script.googleusercontent.com'||incoming.hostname.endsWith('.script.googleusercontent.com')||/^[a-z0-9-]+-script\.googleusercontent\.com$/i.test(incoming.hostname);
  }catch(_){return false}
 }
 function driveRequestId(){return globalThis.crypto&&typeof globalThis.crypto.randomUUID==='function'?globalThis.crypto.randomUUID():uid()+'_'+uid()}
