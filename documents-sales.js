@@ -37,7 +37,7 @@ function emailsForOrder(o){var list=(db.users||[]).filter(function(u){return u.a
 function withVisibleOrders(fn){if(!isSale())return fn();var all=db.orders;db.orders=all.filter(canSeeOrder);try{return fn()}finally{db.orders=all}}
 
 var style=document.createElement('style');
-style.textContent='.sale-email-warn{color:#b83232;font-weight:700}.documents-box{margin-top:22px;padding-top:18px;border-top:1px solid var(--line)}.documents-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}.documents-head h3{margin:0}.documents-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}.document-card{padding:14px;border:1px solid var(--line);border-radius:13px;background:#fbfcfe;min-width:0}.document-card h4{margin:0 0 9px}.document-file{min-height:48px}.document-file b,.document-file small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.document-file small{color:var(--muted);margin-top:4px}.document-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:11px}.document-actions button,.document-actions a{min-height:34px;padding:6px 10px;border:1px solid var(--line);border-radius:9px;background:#fff;color:var(--ink);text-decoration:none;font-size:12px}.document-history{margin-top:9px;font-size:11px;color:var(--muted)}.document-history summary{cursor:pointer;font-weight:700}.document-history-item{padding:6px 0;border-top:1px solid #e8edf3}.drive-config{margin-top:16px}.upload-progress{margin:12px 0;padding:10px;border-radius:9px;background:#eef4ff;color:#34557f}.sale-owner-picker{position:relative;margin-top:5px}.sale-owner-picker summary{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:42px;padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:#fff;cursor:pointer;list-style:none;box-shadow:0 1px 2px rgba(15,35,65,.04)}.sale-owner-picker summary::-webkit-details-marker{display:none}.sale-owner-picker[open] summary{border-color:#2f6fed;box-shadow:0 0 0 3px rgba(47,111,237,.12)}.sale-owner-summary{font-weight:600;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.sale-owner-arrow{color:var(--muted);transition:transform .16s}.sale-owner-picker[open] .sale-owner-arrow{transform:rotate(180deg)}.sale-owner-menu{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:8px;padding:10px;border:1px solid var(--line);border-radius:12px;background:#f8fafc;box-shadow:0 10px 24px rgba(15,35,65,.10)}.sale-owner-option{position:relative;display:flex;align-items:center;gap:10px;min-width:0;padding:10px;border:1px solid #dbe3ee;border-radius:10px;background:#fff;cursor:pointer;transition:.15s}.sale-owner-option:hover{border-color:#8fb2f5;background:#f7faff}.sale-owner-option.selected{border-color:#2f6fed;background:#eef4ff}.sale-owner-option input{position:absolute;opacity:0;pointer-events:none}.sale-owner-check{display:flex;align-items:center;justify-content:center;flex:0 0 20px;width:20px;height:20px;border:1.5px solid #aebaca;border-radius:6px;color:transparent;font-size:13px;font-weight:800}.sale-owner-option.selected .sale-owner-check{border-color:#2f6fed;background:#2f6fed;color:#fff}.sale-owner-person{min-width:0}.sale-owner-person b,.sale-owner-person small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.sale-owner-person small{margin-top:2px;color:var(--muted);font-size:11px}.sale-owner-readonly{display:flex;gap:7px;flex-wrap:wrap;margin-top:5px;padding:9px 10px;border:1px solid var(--line);border-radius:10px;background:#f8fafc}.sale-owner-chip{display:inline-flex;align-items:center;gap:6px;padding:6px 9px;border-radius:999px;background:#eaf1ff;color:#2456a6;font-weight:700;font-size:12px}.sale-owner-chip:before{content:"";width:7px;height:7px;border-radius:50%;background:#2f6fed}.sale-owner-empty{color:var(--muted);font-size:12px}.sale-owner-note{display:block;margin-top:5px;color:var(--muted);font-size:11px}@media(max-width:800px){.sale-owner-menu{grid-template-columns:1fr}.documents-grid{grid-template-columns:1fr}}';
+style.textContent='.sale-email-warn{color:#b83232;font-weight:700}.documents-box{margin-top:22px;padding-top:18px;border-top:1px solid var(--line)}.documents-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}.documents-head h3{margin:0}.documents-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}.document-card{padding:14px;border:1px solid var(--line);border-radius:13px;background:#fbfcfe;min-width:0}.document-card h4{margin:0 0 9px}.document-file{min-height:48px}.document-file b,.document-file small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.document-file small{color:var(--muted);margin-top:4px}.document-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:11px}.document-actions button,.document-actions a{min-height:34px;padding:6px 10px;border:1px solid var(--line);border-radius:9px;background:#fff;color:var(--ink);text-decoration:none;font-size:12px}.document-history{margin-top:9px;font-size:11px;color:var(--muted)}.document-history summary{cursor:pointer;font-weight:700}.document-history-item{padding:6px 0;border-top:1px solid #e8edf3}.drive-config{margin-top:16px}.upload-progress{margin:12px 0;padding:10px;border-radius:9px;background:#eef4ff;color:#34557f}.sale-extra-wrap{margin-top:7px}.sale-extra-list{display:grid;gap:7px}.sale-extra-row{display:flex;align-items:center;gap:7px}.sale-extra-row select{flex:1;min-width:0}.sale-extra-remove{display:flex;align-items:center;justify-content:center;flex:0 0 36px;width:36px;height:36px;padding:0;border:1px solid #dbe3ee;border-radius:9px;background:#fff;color:#7a8798;font-size:18px}.sale-extra-remove:hover{border-color:#e48b8b;background:#fff5f5;color:#c43d3d}.sale-add-button{width:100%;margin-top:7px;border:1px dashed #8fb2f5;background:#f7faff;color:#2456a6;font-weight:700}.sale-add-button:hover{border-color:#2f6fed;background:#eef4ff}.sale-owner-readonly{display:flex;gap:7px;flex-wrap:wrap;margin-top:7px}.sale-owner-chip{display:inline-flex;align-items:center;gap:6px;padding:6px 9px;border-radius:999px;background:#eaf1ff;color:#2456a6;font-weight:700;font-size:12px}.sale-owner-chip:before{content:"";width:7px;height:7px;border-radius:50%;background:#2f6fed}.sale-owner-empty{color:var(--muted);font-size:12px}.sale-owner-note{display:block;margin-top:5px;color:var(--muted);font-size:11px}@media(max-width:800px){.sale-extra-row{align-items:stretch}.documents-grid{grid-template-columns:1fr}}';
 document.head.appendChild(style);
 
 var baseRenderBoardDocs=renderBoard;
@@ -97,23 +97,42 @@ var baseToggleAccountDocs=toggleAccount;
 toggleAccount=function(id){baseToggleAccountDocs(id);syncAllDocumentPermissions(true)};
 
 function saleOwnerChips(list){
- return'<div class="sale-owner-readonly">'+(list.length?list.map(function(s){return'<span class="sale-owner-chip">'+esc(s.name)+'</span>'}).join(''):'<span class="sale-owner-empty">Chưa giao Sale phụ trách</span>')+'</div>';
+ return'<div class="sale-owner-readonly">'+list.map(function(s){return'<span class="sale-owner-chip">'+esc(s.name)+'</span>'}).join('')+'</div>';
 }
-function saleOwnerField(o){
- var selected=o?saleIds(o):isSale()?[user().id]:[];
- var chosen=assignedSales(o||{});
- if(isSale())return'<div class="field span2" data-sale-owner-field><label>Sale phụ trách</label>'+saleOwnerChips(chosen.length?chosen:[user()])+'<small class="sale-owner-note">Đơn do bạn tạo được tự động giao cho bạn.</small></div>';
- if(canAssignSale()){
-  var list=sales();
-  return'<div class="field span2" data-sale-owner-field><label>Sale phụ trách</label><details class="sale-owner-picker"><summary><span class="sale-owner-summary" data-sale-owner-summary>Chọn Sale phụ trách</span><span class="sale-owner-arrow">⌄</span></summary><div class="sale-owner-menu">'+(list.length?list.map(function(s){return'<label class="sale-owner-option '+(selected.includes(s.id)?'selected':'')+'"><input type="checkbox" name="saleOwnerIds" value="'+s.id+'" '+(selected.includes(s.id)?'checked':'')+'><span class="sale-owner-check">✓</span><span class="sale-owner-person"><b>'+esc(s.name)+'</b><small>'+esc(s.email||'Chưa có email')+'</small></span></label>'}).join(''):'<span class="sale-owner-empty">Chưa có tài khoản Sale đang hoạt động.</span>')+'</div></details><small class="sale-owner-note">Có thể chọn nhiều Sale. Mỗi Sale chỉ nhìn thấy đơn được giao cho mình.</small></div>';
+function saleOptionHtml(selectedId,primary){
+ var empty=primary?'<option value="">-- Chọn Sale phụ trách --</option>':'<option value="">-- Chọn Sale phối hợp --</option>';
+ return empty+sales().map(function(s){return'<option value="'+esc(primary?s.name:s.id)+'" data-sale-id="'+esc(s.id)+'" '+(s.id===selectedId?'selected':'')+'>'+esc(s.name)+(s.email?' · '+esc(s.email):'')+'</option>'}).join('');
+}
+function selectedSaleId(select){
+ var option=select&&select.options&&select.options[select.selectedIndex];return option&&option.dataset.saleId||'';
+}
+function saleOwnerControls(o){
+ var selected=o?saleIds(o):isSale()?[user().id]:[],extra=selected.slice(1),chosen=assignedSales(o||{}).slice(1);
+ if(!canAssignSale()){
+  var note=isSale()?'Đơn do bạn tạo được tự động giao cho bạn.':'Chỉ Quản lý Sale, Giám đốc và Admin được thay đổi người phụ trách.';
+  return'<div class="sale-extra-wrap" data-sale-owner-field>'+(chosen.length?'<small class="sale-owner-note">Sale phối hợp</small>'+saleOwnerChips(chosen):'')+'<small class="sale-owner-note">'+note+'</small></div>';
  }
- return'<div class="field span2" data-sale-owner-field><label>Sale phụ trách</label>'+saleOwnerChips(chosen)+'<small class="sale-owner-note">Chỉ Quản lý Sale, Giám đốc và Admin được thay đổi người phụ trách.</small></div>';
+ return'<div class="sale-extra-wrap" data-sale-owner-field><div class="sale-extra-list" data-sale-extra-list>'+extra.map(function(id){return saleExtraRow(id)}).join('')+'</div><button type="button" class="sale-add-button" data-add-sale>＋ Thêm Sale</button><small class="sale-owner-note">Có thể thêm nhiều Sale phối hợp; không thể chọn trùng.</small></div>';
 }
-function bindSaleOwnerPicker(root){
- var picker=(root||document).querySelector('.sale-owner-picker');if(!picker)return;
- var checks=Array.from(picker.querySelectorAll('[name="saleOwnerIds"]')),summary=picker.querySelector('[data-sale-owner-summary]');
- function update(){var names=[];checks.forEach(function(input){var option=input.closest('.sale-owner-option');if(option)option.classList.toggle('selected',input.checked);if(input.checked){var name=option&&option.querySelector('b');if(name)names.push(name.textContent)}});if(summary)summary.textContent=names.length?names.join(', '):'Chọn Sale phụ trách'}
- checks.forEach(function(input){input.addEventListener('change',update)});update();
+function saleExtraRow(value){
+ return'<div class="sale-extra-row"><select name="saleOwnerExtra">'+saleOptionHtml(value,false)+'</select><button type="button" class="sale-extra-remove" title="Bỏ Sale này" aria-label="Bỏ Sale này">×</button></div>';
+}
+function bindSaleOwnerControls(field,primary){
+ var block=field.querySelector('[data-sale-owner-field]'),list=block&&block.querySelector('[data-sale-extra-list]');if(!block||!canAssignSale())return;
+ function allSelects(){return[primary].concat(Array.from(block.querySelectorAll('[name="saleOwnerExtra"]')))}
+ function refresh(){
+  var controls=allSelects(),selected=controls.map(selectedSaleId).filter(Boolean);
+  controls.forEach(function(select){var own=selectedSaleId(select);Array.from(select.options).forEach(function(option){var id=option.dataset.saleId||'';option.disabled=!!id&&id!==own&&selected.includes(id)})});
+  block.querySelectorAll('.sale-extra-row').forEach(function(row){var remove=row.querySelector('.sale-extra-remove'),select=row.querySelector('select');remove.onclick=function(){row.remove();refresh()};select.onchange=refresh});
+ }
+ var add=block.querySelector('[data-add-sale]');if(add)add.onclick=function(){var used=allSelects().map(selectedSaleId).filter(Boolean);if(used.length>=sales().length)return toast('Tất cả Sale đã được phân vào đơn hàng.');list.insertAdjacentHTML('beforeend',saleExtraRow(''));refresh();var selects=list.querySelectorAll('select');if(selects.length)selects[selects.length-1].focus()};
+ primary.onchange=refresh;refresh();
+}
+function configureSaleOwnerField(o,field,primary){
+ var selected=o?saleIds(o):isSale()?[user().id]:[],primaryId=selected[0]||'',wasDisabled=primary.disabled;
+ field.querySelector('label').textContent='Người phụ trách (Sale chính)';
+ primary.innerHTML=saleOptionHtml(primaryId,true);primary.dataset.primarySale='1';primary.disabled=wasDisabled||!canAssignSale();
+ field.insertAdjacentHTML('beforeend',saleOwnerControls(o));bindSaleOwnerControls(field,primary);
 }
 var baseOpenOrderDocs=openOrder;
 openOrder=function(id,tab){
@@ -127,14 +146,18 @@ openOrder=function(id,tab){
  }
  if(tab!=='info')return;
  var content=$('#orderFormBody .formcontent'),grid=content&&content.querySelector('.grid');if(!content||!grid)return;
- if(!grid.querySelector('[data-sale-owner-field]')){grid.insertAdjacentHTML('beforeend',saleOwnerField(order));bindSaleOwnerPicker(grid)}
+ var primary=grid.querySelector('select[name="owner"]'),ownerField=primary&&primary.closest('.field');if(ownerField&&!ownerField.querySelector('[data-sale-owner-field]'))configureSaleOwnerField(order,ownerField,primary)
  if(order){order.documents=order.documents||{};content.insertAdjacentHTML('beforeend',renderDocumentSection(order));bindDocumentActions(order)}
  else content.insertAdjacentHTML('beforeend','<div class="documents-box"><h3>Tài liệu đơn hàng</h3><div class="empty">Hãy lưu đơn hàng trước khi tải tài liệu.</div></div>');
 };
 var baseSaveOrderDocs=saveOrder;
 saveOrder=function(o,isExisting){
- var before=saleIds(o),fields=$$('#orderForm [name="saleOwnerIds"]:checked'),ids=isSale()?(isExisting&&before.length?before:[user().id]):canAssignSale()?fields.map(function(x){return x.value}):before;
- o.saleOwnerIds=Array.from(new Set(ids.filter(Boolean)));o.saleOwnerId=o.saleOwnerIds[0]||'';o.documents=o.documents||{};o.documents.saleOwnerIds=o.saleOwnerIds.slice();var chosen=assignedSales(o),ownerField=$('#orderForm [name="owner"]');if(chosen.length&&ownerField){ownerField.value=chosen[0].name;o.owner=chosen[0].name}
+ var before=saleIds(o),primary=$('#orderForm [data-primary-sale]'),primaryId=selectedSaleId(primary),extraIds=$$('#orderForm [name="saleOwnerExtra"]').map(selectedSaleId).filter(Boolean);
+ if(canAssignSale()&&!primaryId)return toast('Vui lòng chọn Sale phụ trách chính.');
+ var ids=isSale()?(isExisting&&before.length?before:[user().id]):canAssignSale()?[primaryId].concat(extraIds):before;
+ o.saleOwnerIds=Array.from(new Set(ids.filter(Boolean)));o.saleOwnerId=o.saleOwnerIds[0]||'';o.documents=o.documents||{};o.documents.saleOwnerIds=o.saleOwnerIds.slice();var chosen=assignedSales(o);
+ if(primary){var ownerName=chosen.length?chosen[0].name:o.owner||'';if(ownerName&&!Array.from(primary.options).some(function(x){return x.value===ownerName})){var option=document.createElement('option');option.value=ownerName;option.textContent=ownerName;primary.appendChild(option)}primary.value=ownerName;primary.disabled=false}
+ if(chosen.length)o.owner=chosen[0].name;
  var changed=before.slice().sort().join('|')!==o.saleOwnerIds.slice().sort().join('|');if(changed)log(o,'Cập nhật Sale phụ trách: '+(chosen.length?chosen.map(function(x){return x.name}).join(', '):'Chưa giao'));
  baseSaveOrderDocs(o,isExisting);
  if(changed&&isExisting)syncOrderDocumentPermissions(o,true);
