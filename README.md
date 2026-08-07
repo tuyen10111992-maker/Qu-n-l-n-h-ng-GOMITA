@@ -22,7 +22,7 @@ Lần đầu hệ thống có một tài khoản quản trị: tên đăng nhậ
 - Khoản chi thống nhất: Chi đơn hàng/Chi phát sinh, người trả, công nợ và xác nhận Kế toán.
 - Nhật ký công tác dạng ma trận, sửa số công và phụ phí công tác; nhân công tách theo Ra file/Sản xuất/Lắp đặt.
 - Hoàn công chỉ chuyển về Lưu trữ khi hết công nợ và mọi khoản thu/chi đã được Kế toán xác nhận.
-- Sao lưu Google Drive tự động mỗi 7 ngày, sao lưu thủ công, xem lịch sử và phục hồi theo ngày.
+- Sao lưu Google Drive tự động hàng ngày, sao lưu thủ công, xem lịch sử và phục hồi theo ngày.
 
 ## Kiến trúc triển khai nhiều người dùng
 
