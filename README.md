@@ -26,6 +26,8 @@ Lần đầu hệ thống có một tài khoản quản trị: tên đăng nhậ
 
 ## Kiến trúc triển khai nhiều người dùng
 
+- Phục hồi bản sao lưu theo chế độ toàn hệ thống: tạo bản an toàn được Google Drive xác nhận, khóa đồng bộ, lấy bản được chọn làm dữ liệu chuẩn cho cả máy và Cloud.
+- Các máy đang mở sẽ tự tải lại sau khi phục hồi; đơn chỉ tồn tại trên Cloud được đánh dấu để không tự quay trở lại.
 `database.sql` là schema PostgreSQL/Supabase gồm hồ sơ, đơn, phát sinh, khoản thu, chi phí, nhân sự, công đoạn và activity log; có view tài chính, index và RLS nền tảng. Bản production nên tách thành:
 
 1. Frontend này kết nối Supabase JS (Auth + REST/Realtime).
