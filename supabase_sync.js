@@ -360,7 +360,7 @@ document.addEventListener('DOMContentLoaded', () => {
       };
       
       // Khởi động đồng bộ tự động kéo dữ liệu về
-      syncFromSupabase();
+      if(window.GOMITA_SESSION_LIFECYCLE) window.GOMITA_SESSION_LIFECYCLE.start(); else if(sessionStorage.getItem('gomita-session')) syncFromSupabase();
     }
   }, 500); // Delay nhẹ để app.js gọi init() xong
 });

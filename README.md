@@ -28,6 +28,15 @@ Lần đầu hệ thống có một tài khoản quản trị: tên đăng nhậ
 
 - Phục hồi bản sao lưu theo chế độ toàn hệ thống: tạo bản an toàn được Google Drive xác nhận, khóa đồng bộ, lấy bản được chọn làm dữ liệu chuẩn cho cả máy và Cloud.
 - Các máy đang mở sẽ tự tải lại sau khi phục hồi; đơn chỉ tồn tại trên Cloud được đánh dấu để không tự quay trở lại.
+- Khi mở một đơn để sửa, phần mềm lấy khóa trên Cloud theo từng đơn. Người khác chỉ được xem và thấy tên người đang sửa.
+- Khóa được gia hạn mỗi 25 giây và tự hết hạn sau 90 giây nếu mất mạng hoặc đóng máy.
+- Mỗi lần lưu chỉ ghi đúng đơn đang giữ khóa; các đơn khác không bị ghi đè từ bộ nhớ cũ trên trình duyệt.
+- Supabase Realtime cập nhật đúng đơn vừa thay đổi; không còn polling tải toàn bộ dữ liệu theo chu kỳ.
+- Trong lúc kiểm tra khóa hoặc chuyển bước, thao tác lặp trên cùng đơn bị chặn để tránh bấm đúp chạy hai lần.
+- Trong lúc một đơn đang chờ Cloud xác nhận, toàn bộ thao tác sửa đơn khác bị chặn; chỉ mở lại sau khi lưu thành công.
+- Nếu máy chủ mất kết nối, phần mềm chuyển sang cảnh báo toàn màn hình và không cho bắt đầu hoặc tiếp tục sửa cho đến khi kiểm tra lại thành công.
+- Khi đăng nhập, tải lại trang hoặc bấm Tải Cloud, phần mềm tải toàn bộ dữ liệu một lần; trong phiên làm việc chỉ tải/lưu đúng đơn được mở hoặc thay đổi.
+- Không thao tác 5 phút sẽ tự đăng xuất, nhả khóa đã lưu xong, ngắt Realtime và dừng mọi đồng bộ nền.
 `database.sql` là schema PostgreSQL/Supabase gồm hồ sơ, đơn, phát sinh, khoản thu, chi phí, nhân sự, công đoạn và activity log; có view tài chính, index và RLS nền tảng. Bản production nên tách thành:
 
 1. Frontend này kết nối Supabase JS (Auth + REST/Realtime).
