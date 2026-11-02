@@ -19,7 +19,7 @@
       const cost = linkedCost(order, extra);
       const status = isPurchase ? (cost?.paymentStatus || 'Chờ kế toán xác nhận') : 'Không có khoản chi';
       const kind = isPurchase ? 'Có mua hoặc chi thêm' : 'Công việc làm thêm';
-      return `<div class="expense-card"><div><b>${esc(extra.text || 'Phát sinh')}</b><div class="expense-meta"><span class="mini-pill">${kind}</span><span class="mini-pill">${Number(extra.amount||0)<0?'Giảm trừ khách':'Thu khách'}: ${money(Number(extra.amount || 0))}</span>${isPurchase ? `<span class="mini-pill">Đã chi: ${money(Number(cost?.amount || extra.purchaseCost || 0))}</span><span class="mini-pill ${status === 'Đã thanh toán' ? 'paid' : 'pending'}">${esc(status)}</span>` : ''}</div><small>${extra.date ? fmtDate(extra.date) + ' · ' : ''}${esc(extra.by || '')}${extra.note ? ' · ' + esc(extra.note) : ''}</small></div><b>${money(Number(extra.amount || 0))}</b><div class="row-actions">${editable && canAddData('extras') ? `<button data-edit-extra="${extra.id}">Sửa</button><button data-delete-extra="${extra.id}">×</button>` : ''}</div></div>`;
+      return `<div class="expense-card"><div><b>${esc(extra.text || 'Phát sinh')}</b><div class="expense-meta"><span class="mini-pill">${kind}</span>${extra.printInfo ? `<span class="mini-pill">${esc(Number(extra.printInfo.quantity).toLocaleString('vi-VN'))} ${esc(extra.printInfo.unit)} × ${money(Number(extra.printInfo.unitPrice))}</span>` : ''}<span class="mini-pill">${Number(extra.amount||0)<0?'Giảm trừ khách':'Thu khách'}: ${money(Number(extra.amount || 0))}</span>${isPurchase ? `<span class="mini-pill">Đã chi: ${money(Number(cost?.amount || extra.purchaseCost || 0))}</span><span class="mini-pill ${status === 'Đã thanh toán' ? 'paid' : 'pending'}">${esc(status)}</span>` : ''}</div><small>${extra.date ? fmtDate(extra.date) + ' · ' : ''}${esc(extra.by || '')}${extra.note ? ' · ' + esc(extra.note) : ''}</small></div><b>${money(Number(extra.amount || 0))}</b><div class="row-actions">${editable && canAddData('extras') ? `<button data-edit-extra="${extra.id}">Sửa</button><button data-delete-extra="${extra.id}">×</button>` : ''}</div></div>`;
     }).join('');
   }
 
@@ -36,11 +36,19 @@
   function fields(extra = {}) {
     const kind = extra.extraKind || 'work';
     const cost = extra._cost || {};
+    const detail = extra.printInfo || { unit: extra.extraKind === 'purchase' ? 'Gói' : 'Công', quantity: 1, unitPrice: Number(extra.amount || 0) };
     const payers = ['Công ty trả tiền', 'Nhân viên trả tiền cần công ty thanh toán', 'Khách tự trả tiền', 'Công ty trả tiền nhưng nợ NCC'];
-    return `<div class="grid"><div class="field span3"><label>Loại phát sinh *</label><select name="extraKind"><option value="work" ${kind === 'work' ? 'selected' : ''}>Công việc làm thêm, không mua vật tư</option><option value="purchase" ${kind === 'purchase' ? 'selected' : ''}>Có mua hoặc chi thêm</option></select></div><div class="field span2"><label>Nội dung phát sinh *</label><input name="text" value="${esc(extra.text || '')}" required></div><div class="field"><label>Tiền thu thêm của khách *</label><input type="number" name="amount" value="${Number(extra.amount || 0)}" required></div><div class="field"><label>Ngày phát sinh</label><input type="date" name="date" value="${extra.date || today()}"></div><div class="field span2"><label>Ghi chú</label><input name="note" value="${esc(extra.note || '')}"></div><div data-purchase-fields class="field span3"><div class="grid"><div class="field"><label>Tiền thực tế đã chi *</label><input type="number" min="0" name="purchaseCost" value="${Number(cost.amount || extra.purchaseCost || 0)}"></div><div class="field"><label>Ai thanh toán?</label><select name="payer">${payers.map((value) => `<option ${value === (cost.payer || extra.payer) ? 'selected' : ''}>${value}</option>`)}</select></div><div class="field"><label>Công ty đang nợ ai?</label><input name="creditor" value="${esc(cost.creditor || extra.creditor || '')}" placeholder="Nhân viên hoặc nhà cung cấp"></div></div></div></div>`;
+    return `<div class="grid"><div class="field span3"><label>Loại phát sinh *</label><select name="extraKind"><option value="work" ${kind === 'work' ? 'selected' : ''}>Công việc làm thêm, không mua vật tư</option><option value="purchase" ${kind === 'purchase' ? 'selected' : ''}>Có mua hoặc chi thêm</option></select></div><div class="field span2"><label>Nội dung phát sinh *</label><input name="text" value="${esc(extra.text || '')}" required></div><div class="field"><label>Đơn vị tính *</label><input name="unit" value="${esc(detail.unit || '')}" placeholder="Bộ, cái, m², mét…" required></div><div class="field"><label>Số lượng *</label><input type="number" step="any" name="quantity" value="${Number(detail.quantity ?? 1)}" required></div><div class="field"><label>Đơn giá *</label><input type="number" step="any" name="unitPrice" value="${Number(detail.unitPrice ?? 0)}" required></div><div class="field"><label>Thành tiền (thu thêm / giảm trừ)</label><input type="number" step="any" name="amount" value="${Number(extra.amount || 0)}" readonly></div><div class="field"><label>Ngày phát sinh</label><input type="date" name="date" value="${extra.date || today()}"></div><div class="field span2"><label>Ghi chú</label><input name="note" value="${esc(extra.note || '')}"></div><div data-purchase-fields class="field span3"><div class="grid"><div class="field"><label>Tiền thực tế đã chi *</label><input type="number" min="0" name="purchaseCost" value="${Number(cost.amount || extra.purchaseCost || 0)}"></div><div class="field"><label>Ai thanh toán?</label><select name="payer">${payers.map((value) => `<option ${value === (cost.payer || extra.payer) ? 'selected' : ''}>${value}</option>`)}</select></div><div class="field"><label>Công ty đang nợ ai?</label><input name="creditor" value="${esc(cost.creditor || extra.creditor || '')}" placeholder="Nhân viên hoặc nhà cung cấp"></div></div></div></div>`;
   }
 
   function bindKindVisibility() {
+    const quantity = $('#quickForm [name="quantity"]');
+    const unitPrice = $('#quickForm [name="unitPrice"]');
+    const amount = $('#quickForm [name="amount"]');
+    const recalculate = () => { amount.value = String(Number(quantity.value) * Number(unitPrice.value)); };
+    quantity.oninput = recalculate;
+    unitPrice.oninput = recalculate;
+    recalculate();
     const select = $('#quickForm [name="extraKind"]');
     const purchaseFields = $('#quickForm [data-purchase-fields]');
     if (!select || !purchaseFields) return;
@@ -53,7 +61,11 @@
     const form = new FormData($('#quickForm'));
     const kind = String(form.get('extraKind'));
     const text = String(form.get('text') || '').trim();
-    const amount = Number(form.get('amount'));
+    const unit = String(form.get('unit') || '').trim();
+    const quantity = Number(form.get('quantity'));
+    const unitPrice = Number(form.get('unitPrice'));
+    const amount = quantity * unitPrice;
+    if (!unit || !String(form.get('quantity') || '').trim() || !String(form.get('unitPrice') || '').trim() || !Number.isFinite(quantity) || !Number.isFinite(unitPrice)) return toast('Vui lòng nhập đơn vị tính, số lượng và đơn giá hợp lệ.');
     const purchaseCost = Number(form.get('purchaseCost'));
     const payer = String(form.get('payer') || 'Công ty trả tiền');
     const creditor = String(form.get('creditor') || '').trim();
@@ -67,6 +79,7 @@
     Object.assign(extra, {
       text,
       amount,
+      printInfo: { unit, quantity, unitPrice },
       type: 'Khách trả',
       extraKind: kind,
       date: form.get('date') || today(),
