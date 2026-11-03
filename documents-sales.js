@@ -185,7 +185,9 @@ function parseEstimateJson(parsed){
  if(sourceRows.length){
   var interiorRows=sourceRows.map(function(row){var quantity=Number(row.soLuong||0),unitPrice=Number(row.donGiaBaoGia||0);return{name:String(row.name||row.hangMuc||'').trim(),groupName:String(row.tenHeBaoGia||'').trim(),unit:String(row.donVi||row.unit||'').trim(),quantity:quantity,unitPrice:unitPrice,amount:Math.round(quantity*unitPrice)}}).filter(function(row){return row.name&&row.quantity>0&&row.unitPrice>=0});
   if(!interiorRows.length)throw new Error('File JSON không có dữ liệu báo giá hợp lệ (duLieuBaoGiaRows).');
-  return{rows:interiorRows,total:interiorRows.reduce(function(sum,row){return sum+row.amount},0),sourceType:'interior_estimate',sourceLabel:'Dự toán nội thất',sourceCreatedAt:parsed.createdAt||'',readAt:new Date().toISOString()};
+  var rawEstimate=parsed.duLieuTinhTienMoiNhat&&parsed.duLieuTinhTienMoiNhat.tongTatCa;
+  var estimate=rawEstimate!==null&&rawEstimate!==undefined&&String(rawEstimate).trim()!==''?Number(rawEstimate):NaN;
+  return{estimateTotal:Number.isFinite(estimate)&&estimate>=0?Math.round(estimate):null,rows:interiorRows,total:interiorRows.reduce(function(sum,row){return sum+row.amount},0),sourceType:'interior_estimate',sourceLabel:'Dự toán nội thất',sourceCreatedAt:parsed.createdAt||'',readAt:new Date().toISOString()};
  }
  var processingRows=Array.isArray(parsed&&parsed.lines)?parsed.lines:[];
  if(processingRows.length){
@@ -250,14 +252,15 @@ function openDocumentUpload(o,type){
   if(file.size>20*1024*1024)return toast('File không được lớn hơn 20 MB.');
   var button=$('#saveDocumentUpload'),progress=$('#documentUploadProgress');button.disabled=true;progress.innerHTML='<div class="upload-progress">Đang tải file lên Google Drive...</div>';setSaveStatus('saving','Đang tải tài liệu');
   try{
-   var estimateSnapshot=null,applyQuotePrice=true,oldQuote=Number(o.quote||0);
+   var estimateSnapshot=null,applyQuotePrice=true,oldQuote=Number(o.quote||0),oldEstimate=Number(o.estimate||0);
    if(isEstimate){
     estimateSnapshot=parseEstimateJson(JSON.parse(await file.text()));
-    if(/_(quote)$/.test(estimateSnapshot.sourceType||'')){
+    if(estimateSnapshot){
      var normalized=function(v){return String(v||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'')},warnings=[];
      if(estimateSnapshot.sourceCustomer&&o.customer&&normalized(estimateSnapshot.sourceCustomer)!==normalized(o.customer))warnings.push('Kh\u00e1ch trong file: '+estimateSnapshot.sourceCustomer+' / \u0111\u01a1n h\u00e0ng: '+o.customer);
      if(estimateSnapshot.sourcePhone&&o.phone&&normalized(estimateSnapshot.sourcePhone)!==normalized(o.phone))warnings.push('\u0110i\u1ec7n tho\u1ea1i trong file: '+estimateSnapshot.sourcePhone+' / \u0111\u01a1n h\u00e0ng: '+o.phone);
-     var promptText='FILE B\u00c1O GI\u00c1 GIA C\u00d4NG\n'+(estimateSnapshot.sourceQuoteCode?'S\u1ed1 b\u00e1o gi\u00e1: '+estimateSnapshot.sourceQuoteCode+'\n':'')+(estimateSnapshot.sourceQuoteDate?'Ng\u00e0y b\u00e1o gi\u00e1: '+estimateSnapshot.sourceQuoteDate+'\n':'')+'Gi\u00e1 hi\u1ec7n t\u1ea1i: '+money(oldQuote)+'\nGi\u00e1 trong file: '+money(estimateSnapshot.total||0)+'\nCh\u00eanh l\u1ec7ch: '+money(Number(estimateSnapshot.total||0)-oldQuote)+(warnings.length?'\n\nC\u1ea2NH B\u00c1O KH\u00d4NG KH\u1edaP:\n- '+warnings.join('\n- '):'')+'\n\nB\u1ea5m OK: t\u1ea3i file v\u00e0 C\u1eacP NH\u1eacT gi\u00e1 b\u00e1o kh\u00e1ch.\nB\u1ea5m H\u1ee6Y: v\u1eabn t\u1ea3i file nh\u01b0ng GI\u1eee NGUY\u00caN gi\u00e1 hi\u1ec7n t\u1ea1i.';
+     var promptText='FILE '+(estimateSnapshot.sourceLabel||'Dự toán / Gia công')+'\n'+(estimateSnapshot.sourceQuoteCode?'S\u1ed1 b\u00e1o gi\u00e1: '+estimateSnapshot.sourceQuoteCode+'\n':'')+(estimateSnapshot.sourceQuoteDate?'Ng\u00e0y b\u00e1o gi\u00e1: '+estimateSnapshot.sourceQuoteDate+'\n':'')+'Gi\u00e1 hi\u1ec7n t\u1ea1i: '+money(oldQuote)+'\nGi\u00e1 trong file: '+money(estimateSnapshot.total||0)+'\nCh\u00eanh l\u1ec7ch: '+money(Number(estimateSnapshot.total||0)-oldQuote)+(warnings.length?'\n\nC\u1ea2NH B\u00c1O KH\u00d4NG KH\u1edaP:\n- '+warnings.join('\n- '):'')+'\n\nB\u1ea5m OK: t\u1ea3i file v\u00e0 C\u1eacP NH\u1eacT gi\u00e1 b\u00e1o kh\u00e1ch.\nB\u1ea5m H\u1ee6Y: v\u1eabn t\u1ea3i file nh\u01b0ng GI\u1eee NGUY\u00caN gi\u00e1 hi\u1ec7n t\u1ea1i.';
+     if(estimateSnapshot.estimateTotal!=null)promptText+='\n\nGiá dự toán hiện tại: '+money(oldEstimate)+'\nGiá dự toán trong file: '+money(estimateSnapshot.estimateTotal)+'\nBấm OK sẽ cập nhật cả giá dự toán và giá báo khách; Hủy giữ nguyên cả hai giá.';
      applyQuotePrice=window.confirm(promptText);
     }
    }
@@ -265,8 +268,8 @@ function openDocumentUpload(o,type){
    var history=current&&current.history?current.history.slice():[];history.unshift({id:uid(),action:current?'Cập nhật '+label:'Tải lên '+label,version:Number(current&&current.version||0)+1,oldName:current&&current.name||'',newName:result.name||file.name,by:user().name,email:user().email,at:new Date().toISOString()});
    o.documents[type]={fileId:result.fileId,name:result.name||file.name,mimeType:mimeType,size:file.size,viewUrl:result.viewUrl,downloadUrl:result.downloadUrl,version:Number(current&&current.version||0)+1,updatedBy:user().name,updatedEmail:user().email,updatedAt:new Date().toISOString(),history:history,estimateSnapshot:estimateSnapshot||(current&&current.estimateSnapshot)||null};
    var quoteChanged=false,newQuote=Number(estimateSnapshot&&estimateSnapshot.total||0);
-   if(estimateSnapshot&&/_(quote)$/.test(estimateSnapshot.sourceType||'')&&applyQuotePrice){o.quote=newQuote;quoteChanged=oldQuote!==newQuote;if(!String(o.customer||'').trim()&&estimateSnapshot.sourceCustomer)o.customer=estimateSnapshot.sourceCustomer;if(!String(o.phone||'').trim()&&estimateSnapshot.sourcePhone)o.phone=estimateSnapshot.sourcePhone;if(!String(o.address||'').trim()&&estimateSnapshot.sourceAddress)o.address=estimateSnapshot.sourceAddress;if(!String(o.content||'').trim()&&estimateSnapshot.sourceProject)o.content=estimateSnapshot.sourceProject}
-   var priceLog=quoteChanged?' \u00b7 Gi\u00e1 b\u00e1o kh\u00e1ch '+money(oldQuote)+' \u2192 '+money(newQuote):estimateSnapshot&&/_(quote)$/.test(estimateSnapshot.sourceType||'')&&!applyQuotePrice?' \u00b7 Gi\u1eef nguy\u00ean gi\u00e1 b\u00e1o kh\u00e1ch':'';log(o,(current?'C\u1eadp nh\u1eadt ':'T\u1ea3i l\u00ean ')+label+': '+file.name+priceLog);save();render();$('#quickDialog').close();openOrder(o.id,'info');setSaveStatus('done','\u0110\u00e3 t\u1ea3i t\u00e0i li\u1ec7u');toast('\u0110\u00e3 l\u01b0u '+label+' l\u00ean Google Drive'+priceLog);
+   if(estimateSnapshot&&applyQuotePrice){o.quote=newQuote;if(estimateSnapshot.estimateTotal!=null)o.estimate=estimateSnapshot.estimateTotal;quoteChanged=oldQuote!==newQuote;if(!String(o.customer||'').trim()&&estimateSnapshot.sourceCustomer)o.customer=estimateSnapshot.sourceCustomer;if(!String(o.phone||'').trim()&&estimateSnapshot.sourcePhone)o.phone=estimateSnapshot.sourcePhone;if(!String(o.address||'').trim()&&estimateSnapshot.sourceAddress)o.address=estimateSnapshot.sourceAddress;if(!String(o.content||'').trim()&&estimateSnapshot.sourceProject)o.content=estimateSnapshot.sourceProject}
+   var priceLog=quoteChanged?' \u00b7 Gi\u00e1 b\u00e1o kh\u00e1ch '+money(oldQuote)+' \u2192 '+money(newQuote):estimateSnapshot&&!applyQuotePrice?' \u00b7 Gi\u1eef nguy\u00ean gi\u00e1 b\u00e1o kh\u00e1ch':'';if(estimateSnapshot&&applyQuotePrice&&estimateSnapshot.estimateTotal!=null&&oldEstimate!==o.estimate)priceLog+=' · Giá dự toán '+money(oldEstimate)+' → '+money(o.estimate);log(o,(current?'C\u1eadp nh\u1eadt ':'T\u1ea3i l\u00ean ')+label+': '+file.name+priceLog);save();render();$('#quickDialog').close();openOrder(o.id,'info');setSaveStatus('done','\u0110\u00e3 t\u1ea3i t\u00e0i li\u1ec7u');toast('\u0110\u00e3 l\u01b0u '+label+' l\u00ean Google Drive'+priceLog);
   }catch(err){console.error(err);progress.innerHTML='<div class="upload-progress danger">'+esc(err.message)+'</div>';setSaveStatus('error','Lỗi tải tài liệu');button.disabled=false}
  };
 }
