@@ -227,7 +227,7 @@ async function syncFromSupabase() {
 
     // Đồng bộ nhân sự
     if (staffRes.data && staffRes.data.length > 0) {
-      db.staff = staffRes.data;
+      db.staff = staffRes.data.filter(staff => ['Hoạt động', 'Khóa'].includes(String(staff.status || '').trim()));
     }
     
     // Cập nhật trạng thái đồng bộ cục bộ để tránh bị trigger push ngược lại ngay lập tức
